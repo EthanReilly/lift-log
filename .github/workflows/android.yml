@@ -23,15 +23,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check signing password is set
-        env:
-          P: ${{ secrets.LIFTLOG_KEYSTORE_PASSWORD }}
-        run: |
-          if [ -z "$P" ]; then
-            echo "::error::Add the LIFTLOG_KEYSTORE_PASSWORD secret in Settings > Secrets and variables > Actions" | tee build.log
-            exit 1
-          fi
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -62,7 +53,13 @@ jobs:
       - name: Publish download
         env:
           GH_TOKEN: ${{ github.token }}
+          P: ${{ secrets.LIFTLOG_KEYSTORE_PASSWORD }}
         run: |
+          if [ -z "$P" ]; then
+            echo "The app built, but it was not published because the LIFTLOG_KEYSTORE_PASSWORD secret is missing." | tee build.log
+            echo "::error::Add the LIFTLOG_KEYSTORE_PASSWORD secret in Settings > Secrets and variables > Actions"
+            exit 1
+          fi
           cp native/android/app/build/outputs/apk/release/app-release.apk lift-log.apk
           TAG="build-${GITHUB_RUN_NUMBER}"
           gh release create "$TAG" lift-log.apk \
