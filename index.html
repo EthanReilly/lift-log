@@ -221,6 +221,29 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .mrow .v{font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;min-width:2.6em}
 .legend{display:flex;gap:12px;justify-content:center;font-size:11px;color:var(--muted);margin:6px 0 2px;flex-wrap:wrap}
 .legend i{display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--accent);margin-right:4px;vertical-align:-1px}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cal .wd{font-size:11px;font-weight:700;color:var(--muted);text-align:center;letter-spacing:.04em;padding-bottom:2px}
+.cd{position:relative;aspect-ratio:1;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;color:var(--fg);background:transparent;border:1px solid transparent}
+.cd.out{visibility:hidden}
+.cd.has{background:var(--accent);color:var(--accent-ink);font-weight:800}
+.cd.today{border-color:var(--accent)}
+.cd.sel{box-shadow:0 0 0 2px var(--fg)}
+.cd.future{color:var(--muted);opacity:.6}
+.cd i{position:absolute;top:2px;right:3px;font-style:normal;font-size:9px;font-weight:800}
+.wk7 .cd{aspect-ratio:auto;flex-direction:column;gap:3px;padding:10px 0;background:var(--surface2)}
+.wk7 .cd.has{background:var(--accent)}
+.wk7 .cd small{font-size:11px;font-weight:700;opacity:.75}
+.calnav{display:flex;align-items:center;gap:6px;margin:0 0 12px}
+.calnav b{flex:1;text-align:center;font-size:16px}
+.yr{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ym{display:block;text-align:left;padding:10px;border-radius:14px;background:var(--surface);border:1px solid var(--line)}
+.ym.cur{border-color:var(--accent)}
+.ym .row{justify-content:space-between;margin-bottom:6px;font-size:13px}
+.ym .row span{color:var(--muted);font-variant-numeric:tabular-nums}
+.ym .ymg{display:grid;grid-template-columns:repeat(7,1fr);gap:2px}
+.ym .ymg i{display:block;aspect-ratio:1;border-radius:2px;background:var(--surface2)}
+.ym .ymg i.on{background:var(--accent)}.ym .ymg i.out{visibility:hidden}
+.cstats{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;margin-bottom:14px}
 .banner{background:var(--warn-soft);color:var(--fg);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:14px}
 </style>
 </head>
@@ -348,7 +371,7 @@ function applyProfile(p){
 }
 
 /* ---------- state + storage ---------- */
-var S={loading:true,tab:'workout',profile:defaultProfile(),workouts:[],active:null,sheetOpen:false,rest:null,ov:[],exq:'',exm:'All',pm:'count',mw:'this',pending:false,bk:null,media:null};
+var S={loading:true,tab:'workout',profile:defaultProfile(),workouts:[],active:null,sheetOpen:false,rest:null,ov:[],exq:'',exm:'All',pm:'count',mw:'this',hv:'list',cv:'month',cd:Date.now(),csel:null,pending:false,bk:null,media:null};
 var timers={};
 function debounce(key,ms,fn){clearTimeout(timers[key]);timers[key]=setTimeout(fn,ms)}
 var LSOK=true;
@@ -502,10 +525,68 @@ function loadingView(){return '<div class="ph"><h1>Lift Log</h1></div><div class
 function tabView(){return {history:historyView,workout:workoutView,exercises:exercisesView,profile:profileView}[S.tab]()}
 function emptyIll(){return '<svg class="ill" viewBox="0 0 96 96" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 36v24M26 28v40M70 28v40M82 36v24M26 48h44"/><path d="M8 44v8M88 44v8" opacity=".5"/></svg>'}
 function historyView(){
-  var h='<div class="ph"><h1>History</h1></div>';
+  var h='<div class="ph"><h1>History</h1>'+(S.workouts.length?'<div class="seg" style="margin:0;min-width:170px" role="group" aria-label="History view">'+[['list','List'],['cal','Calendar']].map(function(x){return '<button data-act="hv" data-id="'+x[0]+'" aria-pressed="'+(S.hv===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>':'')+'</div>';
+  if(S.workouts.length&&S.hv==='cal')return h+calView();
   if(!S.workouts.length)return h+'<div class="empty">'+emptyIll()+'<h3>No workouts logged yet</h3><p>Finish a workout and it will show up here with your volume, time and personal records.</p><button class="btn" data-act="tab" data-id="workout">Start a workout</button></div>';
   var m='';
   S.workouts.forEach(function(w){var mm=fMonth(w.start);if(mm!==m){m=mm;h+='<div class="month">'+esc(m)+'</div>'}h+=wCard(w)});
+  return h;
+}
+/* ---------- calendar ---------- */
+function dayStart(t){var d=new Date(t);d.setHours(0,0,0,0);return d.getTime()}
+function addDays(t,n){var d=new Date(t);d.setDate(d.getDate()+n);return d.getTime()}
+function byDay(){var m={};S.workouts.forEach(function(w){var k=dayStart(w.start);(m[k]=m[k]||[]).push(w)});return m}
+function inRange(a,b){return S.workouts.filter(function(w){return w.start>=a&&w.start<b})}
+function weekStreak(){
+  var wk=weekStart(Date.now()),n=0,has=function(t){return S.workouts.some(function(w){return w.start>=t&&w.start<addDays(t,7)})};
+  if(!has(wk))wk=addDays(wk,-7);
+  while(has(wk)){n++;wk=addDays(wk,-7)}
+  return n;
+}
+function periodStats(ws,label){var d=0,v=0;ws.forEach(function(w){d+=w.dur||0;v+=w.vol||0});
+  return '<div class="cstats">'+kpi('Workouts',ws.length)+kpi('Time',ws.length?fmtShort(d):'0m')+kpi('Volume ('+S.profile.unit+')',fmtVol(v).replace(' '+S.profile.unit,''))+'</div>'}
+function calView(){
+  var mode=S.cv,a=S.cd,days=byDay(),today=dayStart(Date.now()),h='';
+  h+='<div class="seg" role="group" aria-label="Calendar range">'+[['week','Week'],['month','Month'],['year','Year']].map(function(x){return '<button data-act="cv" data-id="'+x[0]+'" aria-pressed="'+(mode===x[0])+'">'+x[1]+'</button>'}).join('')+'</div>';
+  var from,to,label,body='',list=null;
+  if(mode==='week'){
+    from=weekStart(a);to=addDays(from,7);
+    label=fDateS(from)+' – '+fDateS(addDays(from,6));
+    body='<div class="cal wk7">';
+    for(var i=0;i<7;i++){var t=addDays(from,i),n=(days[t]||[]).length;
+      body+='<button class="cd'+(n?' has':'')+(t===today?' today':'')+(t>today?' future':'')+(S.csel===t?' sel':'')+'" data-act="cday" data-id="'+t+'" aria-label="'+esc(fDate(t))+', '+n+' workout'+(n===1?'':'s')+'"><small>'+new Date(t).toLocaleDateString(undefined,{weekday:'short'})+'</small>'+new Date(t).getDate()+'</button>'}
+    body+='</div>';
+  }else if(mode==='month'){
+    var d=new Date(a);d.setDate(1);d.setHours(0,0,0,0);from=d.getTime();var e=new Date(d);e.setMonth(e.getMonth()+1);to=e.getTime();
+    label=d.toLocaleDateString(undefined,{month:'long',year:'numeric'});
+    body='<div class="cal">'+['M','T','W','T','F','S','S'].map(function(x){return '<span class="wd">'+x+'</span>'}).join('');
+    var lead=(d.getDay()+6)%7;for(var j=0;j<lead;j++)body+='<span class="cd out"></span>';
+    for(var t2=from;t2<to;t2=addDays(t2,1)){var n2=(days[t2]||[]).length;
+      body+='<button class="cd'+(n2?' has':'')+(t2===today?' today':'')+(t2>today?' future':'')+(S.csel===t2?' sel':'')+'" data-act="cday" data-id="'+t2+'" aria-label="'+esc(fDate(t2))+', '+n2+' workout'+(n2===1?'':'s')+'">'+new Date(t2).getDate()+(n2>1?'<i>'+n2+'</i>':'')+'</button>'}
+    body+='</div>';
+  }else{
+    var y=new Date(a).getFullYear();from=new Date(y,0,1).getTime();to=new Date(y+1,0,1).getTime();label=String(y);
+    var cm=new Date();body='<div class="yr">';
+    for(var m=0;m<12;m++){var ms=new Date(y,m,1),me=new Date(y,m+1,1),cnt=inRange(ms.getTime(),me.getTime()).length;
+      var mini='',ld=(ms.getDay()+6)%7;for(var k=0;k<ld;k++)mini+='<i class="out"></i>';
+      for(var t3=ms.getTime();t3<me.getTime();t3=addDays(t3,1))mini+='<i'+(days[t3]?' class="on"':'')+'></i>';
+      body+='<button class="ym'+(cm.getFullYear()===y&&cm.getMonth()===m?' cur':'')+'" data-act="cmonth" data-id="'+ms.getTime()+'"><div class="row"><b>'+ms.toLocaleDateString(undefined,{month:'short'})+'</b><span>'+cnt+'</span></div><div class="ymg">'+mini+'</div></button>'}
+    body+='</div>';
+  }
+  var ws=inRange(from,to);
+  h+='<div class="calnav"><button class="ib" data-act="cnav" data-d="-1" aria-label="Previous">'+I.left+'</button><b>'+esc(label)+'</b><button class="ib" data-act="cnav" data-d="1" aria-label="Next" style="transform:scaleX(-1)">'+I.left+'</button></div>';
+  h+=periodStats(ws);
+  h+='<div class="card">'+body+'</div>';
+  var st=weekStreak();
+  h+='<p class="sub" style="margin:10px 2px 0">'+(st?'Weekly streak: <b style="color:var(--fg)">'+st+' week'+(st>1?'s':'')+'</b> in a row with at least one workout.':'Train this week to start a weekly streak.')+' <button class="btn sm sec" style="min-height:30px;margin-left:6px" data-act="ctoday">Today</button></p>';
+  if(mode!=='year'){
+    var sel=S.csel!=null&&S.csel>=from&&S.csel<to?S.csel:null;
+    var show=sel!=null?(days[sel]||[]):ws;
+    var now=Date.now(),isNow=now>=from&&now<to;
+    var title=sel!=null?fDate(sel):(mode==='week'?(isNow?'This week':'Workouts that week'):(isNow?'This month':'Workouts that month'));
+    h+='<h2>'+esc(title)+'</h2>';
+    h+=show.length?show.map(wCard).join(''):'<p class="sub">'+(sel!=null?'No workout on this day.':'No workouts in this period.')+'</p>';
+  }
   return h;
 }
 function wCard(w){
@@ -932,6 +1013,12 @@ function act(a,d,t,e){
     case 'save-as-routine':{var w2=S.workouts.filter(function(x){return x.id===d.id})[0];if(!w2)break;S.profile.routines.push(routineFromWorkout(w2));saveProfile();toast('Saved to Routines');break}
     case 'pm':S.pm=d.id;render();break;
     case 'mw':S.mw=d.id;render();break;
+    case 'hv':S.hv=d.id;render();break;
+    case 'cv':S.cv=d.id;S.csel=null;render();break;
+    case 'cnav':{var dd=new Date(S.cd),k=+d.d;if(S.cv==='week')dd.setDate(dd.getDate()+7*k);else if(S.cv==='month'){dd.setDate(1);dd.setMonth(dd.getMonth()+k)}else dd.setFullYear(dd.getFullYear()+k);S.cd=dd.getTime();S.csel=null;render();break}
+    case 'cday':{var t0=+d.id;S.csel=S.csel===t0?null:t0;render();break}
+    case 'cmonth':S.cv='month';S.cd=+d.id;S.csel=null;render();break;
+    case 'ctoday':S.cd=Date.now();S.csel=null;render();break;
     case 'unit':S.profile.unit=d.id;saveProfile();render();break;
     case 'rest-def':S.profile.rest=Math.max(0,Math.min(600,S.profile.rest+(+d.d)));saveProfile();render();break;
     case 'sound':S.profile.alarm.sound=d.id;saveProfile();render();break;
