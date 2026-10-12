@@ -1,6 +1,8 @@
 package com.ethanreilly.liftlog;
 
 import android.app.Activity;
+import android.app.ActivityOptions;
+import android.app.PendingIntent;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -225,6 +227,42 @@ public class LiftLogPlugin extends Plugin {
                     call.reject("Unknown action");
                     return;
             }
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
+    }
+
+    /** Opens the app that is playing, at its player screen when the app provides one. */
+    @PluginMethod
+    public void openPlayer(PluginCall call) {
+        try {
+            MediaController c = currentController();
+            if (c == null) {
+                call.reject("Nothing is playing");
+                return;
+            }
+            PendingIntent pi = c.getSessionActivity();
+            if (pi != null) {
+                try {
+                    if (Build.VERSION.SDK_INT >= 34) {
+                        ActivityOptions o = ActivityOptions.makeBasic();
+                        o.setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED);
+                        pi.send(getContext(), 0, null, null, null, null, o.toBundle());
+                    } else {
+                        pi.send();
+                    }
+                    call.resolve();
+                    return;
+                } catch (Exception ignored) {}
+            }
+            Intent li = getContext().getPackageManager().getLaunchIntentForPackage(c.getPackageName());
+            if (li == null) {
+                call.reject("Could not open the music app");
+                return;
+            }
+            li.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getActivity().startActivity(li);
             call.resolve();
         } catch (Exception e) {
             call.reject(String.valueOf(e.getMessage()));
