@@ -655,7 +655,7 @@ function profileView(){
    setRow('Default rest timer','','<div class="stepper"><button data-act="rest-def" data-d="-15" aria-label="Decrease rest">−</button><b>'+(S.profile.rest?fmtClock(S.profile.rest):'Off')+'</b><button data-act="rest-def" data-d="15" aria-label="Increase rest">+</button></div>')+
    setRow('Auto-detect warm-up sets','Light sets before your working sets are marked W',sw('tg-autoWarm',S.profile.autoWarm,'Auto-detect warm-up sets'))+
    setRow('Keep screen on during workouts','Stops the phone sleeping between sets',sw('tg-keepAwake',S.profile.keepAwake,'Keep screen on'))+
-   (NATIVE?setRow('Show now playing','Music controls in the workout screen',sw('tg-showMedia',S.profile.showMedia,'Show now playing')):'')+
+   (NATIVE?setRow('Show now playing','Music banner along the bottom of the app',sw('tg-showMedia',S.profile.showMedia,'Show now playing')):'')+
    '</div>';
   h+='<h2>Rest alarm</h2><div class="card stack">'+
    '<div><div class="row"><span class="grow">Volume</span><b class="mono" id="vol-l">'+al.vol+'%</b></div><input type="range" id="alarm-vol" data-in="avol" min="0" max="100" step="5" value="'+al.vol+'" aria-label="Alarm volume"></div>'+
@@ -726,7 +726,7 @@ function sheetView(){
   h+='<button class="btn link block" style="margin-top:8px" data-act="'+(isW?'discard-ask':'del-routine-ask')+'"'+(!isW&&!a.rid?' hidden':'')+'>'+(isW?'Discard workout':'Delete routine')+'</button>';
   return h+'</div>'+(showBanner()?bannerHtml():'')+'</section>';
 }
-function showBanner(){return NATIVE&&S.profile.showMedia&&!!S.active&&S.active.kind==='workout'}
+function showBanner(){return NATIVE&&S.profile.showMedia&&!S.loading}
 function bannerHtml(){return '<div class="mbar" id="media" role="region" aria-label="Now playing">'+mediaHtml(S.media)+'</div>'}
 function mediaHtml(m){
   var art='<span class="art">'+I.note+'</span>';
