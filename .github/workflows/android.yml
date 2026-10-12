@@ -1,0 +1,87 @@
+name: Build Android app
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'icons/**'
+      - 'native/**'
+      - '.github/workflows/android.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check signing password is set
+        env:
+          P: ${{ secrets.LIFTLOG_KEYSTORE_PASSWORD }}
+        run: |
+          if [ -z "$P" ]; then
+            echo "::error::Add the LIFTLOG_KEYSTORE_PASSWORD secret in Settings > Secrets and variables > Actions" | tee build.log
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: native/package-lock.json
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+
+      - name: Copy the web app into the Android project
+        working-directory: native
+        run: |
+          npm ci
+          node prepare-web.js
+          npx cap sync android
+
+      - name: Build APK
+        working-directory: native/android
+        env:
+          LIFTLOG_KEYSTORE_PASSWORD: ${{ secrets.LIFTLOG_KEYSTORE_PASSWORD }}
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease --no-daemon --stacktrace 2>&1 | tee ../../build.log
+
+      - name: Publish download
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp native/android/app/build/outputs/apk/release/app-release.apk lift-log.apk
+          TAG="build-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" lift-log.apk \
+            --title "Lift Log 1.0.${GITHUB_RUN_NUMBER}" \
+            --notes "Built from commit ${GITHUB_SHA::7}. Download lift-log.apk on your phone to install or update." \
+            --latest
+          # keep the 5 newest builds
+          gh release list --limit 100 --json tagName,createdAt --jq 'sort_by(.createdAt) | reverse | .[5:][].tagName' \
+            | xargs -r -I{} gh release delete {} --cleanup-tag -y
+
+      - name: Save build log if something failed
+        if: failure()
+        run: |
+          mkdir -p /tmp/ci && (tail -n 400 build.log 2>/dev/null || echo "No build log was written") > /tmp/ci/build.log
+          git config user.name "lift-log-ci"
+          git config user.email "lift-log-ci@users.noreply.github.com"
+          git checkout --orphan ci-logs
+          git rm -rf . -q
+          cp /tmp/ci/build.log build.log
+          git add build.log
+          git commit -m "Build ${GITHUB_RUN_NUMBER} log"
+          git push -f origin ci-logs

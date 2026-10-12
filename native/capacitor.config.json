@@ -1,0 +1,11 @@
+{
+  "appId": "com.ethanreilly.liftlog",
+  "appName": "Lift Log",
+  "webDir": "www",
+  "android": {
+    "backgroundColor": "#0b0d12"
+  },
+  "plugins": {
+    "SystemBars": { "insetsHandling": "css" }
+  }
+}

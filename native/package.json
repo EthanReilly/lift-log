@@ -1,0 +1,16 @@
+{
+  "name": "lift-log-native",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Android wrapper for Lift Log",
+  "scripts": {
+    "prepare-web": "node prepare-web.js"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.3"
+  }
+}
