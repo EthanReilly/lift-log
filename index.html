@@ -677,9 +677,10 @@ function profileView(){
   }
   h+=(LSOK?'':'<p class="sub" style="margin:0;color:var(--danger);font-weight:700">This browser is blocking storage, so workouts will not be kept. Use Back up now after each session.</p>')+
    '<div class="btns"><button class="btn sec" data-act="backup">Back up now</button><button class="btn sec" data-act="restore">Restore</button></div>'+
+   '<button class="btn sec" data-act="restore">Import from Strong or Hevy</button>'+
    '<button class="btn sec" data-act="export">Export workouts as CSV</button>'+
    '<input type="file" id="restore-file" accept=".json,.csv,application/json,text/csv,text/comma-separated-values,text/plain" hidden>'+
-   '<p class="sub" style="margin:0">Restore accepts a Lift Log backup (.json), which replaces everything, or a CSV export, which adds its workouts to your history.</p></div>';
+   '<p class="sub" style="margin:0">Restore takes a Lift Log backup (.json), which replaces everything. CSV exports from Lift Log, Strong or Hevy are added to your history, and their exercises are matched to the library.</p></div>';
   return h;
 }
 function kpi(l,v){return '<div class="kpi"><small>'+l+'</small><b class="mono">'+esc(v)+'</b></div>'}
@@ -776,6 +777,7 @@ function ovView(o,i){
     case 'setmenu':{var s=S.active.exercises[o.exi].sets[o.si];var opts=[['n','Working set'],['w','Warm-up set'],['d','Drop set'],['f','Failure set']];
       return '<div class="scrim" data-act="scrim"><div class="panel" role="dialog" aria-modal="true">'+opts.map(function(x){return '<button class="opt" data-act="set-type" data-t="'+x[0]+'"'+(s.t===x[0]?' aria-current="true"':'')+'>'+x[1]+(s.t===x[0]&&s.tAuto?' <span class="sub">(auto)</span>':'')+'</button>'}).join('')+'<button class="opt dng" data-act="set-del">'+I.trash+' Delete set</button></div></div>'}
     case 'exmenu':{var n=S.active.exercises.length;return '<div class="scrim" data-act="scrim"><div class="panel" role="dialog" aria-modal="true">'+(o.exi>0?'<button class="opt" data-act="ex-up">'+I.up+' Move up</button>':'')+(o.exi<n-1?'<button class="opt" data-act="ex-down">'+I.down+' Move down</button>':'')+'<button class="opt dng" data-act="ex-del">'+I.trash+' Remove exercise</button></div></div>'}
+    case 'unitask':return '<div class="scrim mid" data-act="scrim"><div class="panel" role="dialog" aria-modal="true"><h3>Import from Strong</h3><p>Found '+o.n+' sets. Which unit are the weights in this file?</p><div class="btns"><button class="btn sec" data-act="unit-pick" data-id="kg">kg</button><button class="btn sec" data-act="unit-pick" data-id="lb">lb</button></div><button class="btn link" data-act="ov-close" style="color:var(--muted)">Cancel</button></div></div>';
     case 'rmenu':return '<div class="scrim" data-act="scrim"><div class="panel" role="dialog" aria-modal="true"><button class="opt" data-act="routine-edit" data-id="'+o.id+'">'+I.edit+' Edit routine</button><button class="opt" data-act="routine-dup" data-id="'+o.id+'">'+I.copy+' Duplicate</button><button class="opt dng" data-act="routine-del" data-id="'+o.id+'">'+I.trash+' Delete routine</button></div></div>';
   }
   return '';
@@ -1030,6 +1032,7 @@ function act(a,d,t,e){
     case 'pick-folder':nat('pickBackupFolder').then(function(r){if(r&&r.name){S.bk=Object.assign(S.bk||{},{folder:r.name,weekly:true});render();backupNow(false)}});break;
     case 'export':exportCsv();break;
     case 'backup':backupNow(false);break;
+    case 'unit-pick':{var ou=S.ov[S.ov.length-1];if(ou&&ou.t==='unitask')runImport(ou.text,{unit:d.id});break}
     case 'restore':{var f=$('#restore-file');if(f)f.click();break}
     default:if(a.indexOf('tg-')===0)toggleSetting(a.slice(3));
   }
@@ -1063,34 +1066,148 @@ function restoreData(d){
   applyProfile(d.profile||{});S.workouts=d.workouts;sortW();lsSet('profile',profileData());saveWorkouts();
   toast('Restored '+S.workouts.length+' workout'+(S.workouts.length===1?'':'s'));
 }
-function parseCSV(t){var rows=[],row=[],f='',q=false;for(var i=0;i<t.length;i++){var c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}else{if(c==='"')q=true;else if(c===','){row.push(f);f=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f=''}else f+=c}}if(f!==''||row.length){row.push(f);rows.push(row)}return rows.filter(function(r){return r.length>1})}
-function importCSV(text){
-  var rows=parseCSV(text.replace(/^﻿/,''));if(rows.length<2)throw new Error('empty');
+function parseCSV(t,sep){sep=sep||',';var rows=[],row=[],f='',q=false;for(var i=0;i<t.length;i++){var c=t[i];if(q){if(c==='"'){if(t[i+1]==='"'){f+='"';i++}else q=false}else f+=c}else{if(c==='"')q=true;else if(c===sep){row.push(f);f=''}else if(c==='\n'||c==='\r'){if(c==='\r'&&t[i+1]==='\n')i++;row.push(f);rows.push(row);row=[];f=''}else f+=c}}if(f!==''||row.length){row.push(f);rows.push(row)}return rows.filter(function(r){return r.length>1})}
+/* exercise name matching for files from other apps */
+var EX_ALIAS={
+  'benchpressbarbell':'bench','benchpress':'bench','flatbenchpress':'bench','benchpressdumbbell':'dbbench','dumbbellbenchpress':'dbbench',
+  'inclinebenchpressbarbell':'incbench','inclinebenchpress':'incbench','inclinebenchpressdumbbell':'incdb','inclinedumbbellpress':'incdb',
+  'chestflydumbbell':'dbfly','dumbbellfly':'dbfly','chestflycable':'cablefly','cablecrossover':'cablefly','cablefly':'cablefly','chestflymachine':'cablefly','pecdeckmachine':'cablefly',
+  'chestpressmachine':'chestpress','pushup':'pushup','pushups':'pushup','chestdip':'chestdip','dip':'chestdip','dips':'chestdip',
+  'deadliftbarbell':'deadlift','deadlift':'deadlift','bentoverrowbarbell':'row','barbellrow':'row','bentoverrow':'row','pendlayrowbarbell':'row',
+  'bentoveronearmrowdumbbell':'dbrow','dumbbellrow':'dbrow','singlearmrowdumbbell':'dbrow','onearmrowdumbbell':'dbrow',
+  'latpulldowncable':'latpd','latpulldown':'latpd','latpulldownmachine':'latpd','seatedrowcable':'cablerow','seatedcablerow':'cablerow','seatedrowmachine':'cablerow',
+  'pullup':'pullup','pullups':'pullup','pullupassisted':'pullup','chinup':'chinup','chinups':'chinup','tbarrow':'tbar','tbarrowmachine':'tbar',
+  'shrugdumbbell':'shrug','dumbbellshrug':'shrug','shrugbarbell':'shrug',
+  'overheadpressbarbell':'ohp','overheadpress':'ohp','strictmilitarypress':'ohp','militarypress':'ohp','shoulderpressbarbell':'ohp',
+  'shoulderpressdumbbell':'dbohp','seatedshoulderpressdumbbell':'dbohp','seateddumbbellshoulderpress':'dbohp','overheadpressdumbbell':'dbohp','shoulderpressmachine':'dbohp',
+  'lateralraisedumbbell':'latraise','lateralraise':'latraise','lateralraisecable':'latraise','reverseflydumbbell':'reardelt','reardeltfly':'reardelt','reverseflymachine':'reardelt','reardeltreversefly':'reardelt',
+  'facepullcable':'facepull','facepull':'facepull','arnoldpressdumbbell':'arnold','arnoldpress':'arnold',
+  'bicepcurlbarbell':'bbcurl','barbellcurl':'bbcurl','curlbarbell':'bbcurl','ezbarcurl':'bbcurl','bicepcurlezbar':'bbcurl',
+  'bicepcurldumbbell':'dbcurl','dumbbellcurl':'dbcurl','curldumbbell':'dbcurl','hammercurldumbbell':'hammer','hammercurl':'hammer',
+  'preachercurlbarbell':'preacher','preachercurlmachine':'preacher','preachercurldumbbell':'preacher','preachercurl':'preacher','bicepcurlcable':'cablecurl','cablecurl':'cablecurl',
+  'tricepspushdown':'pushdown','tricepspushdowncable':'pushdown','tricepspushdowncablestraightbar':'pushdown','tricepspushdowncablerope':'pushdown','triceppushdown':'pushdown','triceppushdowncable':'pushdown','tricepropepushdown':'pushdown',
+  'skullcrusherbarbell':'skull','skullcrusher':'skull','lyingtricepsextensionbarbell':'skull',
+  'overheadtricepsextensiondumbbell':'ohtri','tricepsextensiondumbbell':'ohtri','overheadtricepsextension':'ohtri','tricepsextensioncable':'ohtri',
+  'closegripbenchpressbarbell':'cgbench','benchpressclosegripbarbell':'cgbench','closegripbenchpress':'cgbench','tricepsdip':'tridip','tricepdip':'tridip','benchdip':'tridip',
+  'squatbarbell':'squat','squat':'squat','backsquat':'squat','fullsquat':'squat','frontsquatbarbell':'frontsquat','frontsquat':'frontsquat',
+  'legpress':'legpress','legpressmachine':'legpress','legextensionmachine':'legext','legextension':'legext',
+  'bulgariansplitsquat':'bulg','bulgariansplitsquatdumbbell':'bulg','hacksquat':'hack','hacksquatmachine':'hack',
+  'gobletsquatkettlebell':'goblet','gobletsquatdumbbell':'goblet','gobletsquat':'goblet','lungedumbbell':'lunge','walkinglungedumbbell':'lunge','lunge':'lunge','walkinglunge':'lunge',
+  'romaniandeadliftbarbell':'rdl','romaniandeadlift':'rdl','romaniandeadliftdumbbell':'rdl','stifflegdeadliftbarbell':'rdl',
+  'lyinglegcurlmachine':'legcurl','seatedlegcurlmachine':'legcurl','legcurl':'legcurl','legcurlmachine':'legcurl','goodmorningbarbell':'gm','goodmorning':'gm',
+  'hipthrustbarbell':'hipthrust','hipthrust':'hipthrust','glutebridge':'bridge','glutekickbackcable':'kickback','cablekickback':'kickback',
+  'standingcalfraisemachine':'calf','standingcalfraise':'calf','calfraise':'calf','seatedcalfraisemachine':'seatedcalf','seatedcalfraise':'seatedcalf',
+  'plank':'plank','crunch':'crunch','crunches':'crunch','hanginglegraise':'hlr','cablecrunch':'cablecrunch','russiantwist':'twist','abwheel':'abwheel','abwheelrollout':'abwheel',
+  'running':'run','runningtreadmill':'run','treadmill':'run','cycling':'cycle','cyclingindoor':'cycle','bike':'cycle','rowingmachine':'rower','rowing':'rower','rowingmachinecardio':'rower',
+  'walking':'walk','elliptical':'elliptical','ellipticaltrainer':'elliptical','jumprope':'rope','skipping':'rope','stairclimber':'stairs','stairmaster':'stairs',
+  'kettlebellswing':'kbswing','burpee':'burpee','burpees':'burpee','thrusterbarbell':'thruster','thruster':'thruster'
+};
+function exKey(n){return String(n||'').toLowerCase().replace(/[^a-z0-9]/g,'')}
+function guessMuscle(n){
+  n=n.toLowerCase();
+  var rules=[[/curl(?!.*leg)/,'Biceps'],[/tricep|pushdown|skull|kickback.*dumbbell/,'Triceps'],[/leg curl|romanian|rdl|stiff|hamstring|nordic/,'Hamstrings'],[/calf/,'Calves'],
+    [/hip thrust|glute|abduct/,'Glutes'],[/squat|leg press|lunge|leg extension|step up/,'Quads'],[/row|pulldown|pull up|pull-up|chin|deadlift|shrug|pullover|back extension/,'Back'],
+    [/lateral|shoulder|overhead press|military|delt|face pull|upright/,'Shoulders'],[/bench|chest|fly|push up|push-up|dip|pec/,'Chest'],
+    [/crunch|plank|ab |abs|sit up|leg raise|twist|core|oblique/,'Core'],[/run|cycl|bike|walk|ellip|stair|rowing machine|swim|treadmill|jump rope/,'Cardio']];
+  for(var i=0;i<rules.length;i++)if(rules[i][0].test(n))return rules[i][1];
+  return 'Full Body';
+}
+function guessEquip(n){var m=/\(([^)]*)\)/.exec(n);var e=(m?m[1]:n).toLowerCase();
+  if(/barbell|ez bar/.test(e))return 'Barbell';if(/dumbbell/.test(e))return 'Dumbbell';if(/cable/.test(e))return 'Cable';if(/machine|smith/.test(e))return 'Machine';
+  if(/kettlebell/.test(e))return 'Kettlebell';if(/bodyweight|assisted|weighted/.test(e))return 'Bodyweight';return 'Other'}
+function findExercise(name){
+  var k=exKey(name),base=exKey(String(name).replace(/\([^)]*\)/g,''));
+  if(EX_ALIAS[k])return exOf(EX_ALIAS[k]);
+  var all=allEx();
+  for(var i=0;i<all.length;i++)if(exKey(all[i].name)===k)return all[i];
+  if(EX_ALIAS[base])return exOf(EX_ALIAS[base]);
+  for(var j=0;j<all.length;j++)if(exKey(all[j].name)===base)return all[j];
+  return null;
+}
+/* dates and durations in other apps' exports */
+var MON={jan:0,feb:1,mar:2,apr:3,may:4,jun:5,jul:6,aug:7,sep:8,oct:9,nov:10,dec:11};
+function parseWhen(s){
+  s=String(s||'').trim();if(!s)return NaN;
+  var m=/^(\d{4})-(\d{2})-(\d{2})[ T](\d{1,2}):(\d{2})(?::(\d{2}))?$/.exec(s);
+  if(m)return new Date(+m[1],+m[2]-1,+m[3],+m[4],+m[5],+(m[6]||0)).getTime();
+  m=/^(\d{1,2}) ([A-Za-z]{3})[a-z]* (\d{4}),? (\d{1,2}):(\d{2})/.exec(s);
+  if(m&&MON[m[2].toLowerCase()]!=null)return new Date(+m[3],MON[m[2].toLowerCase()],+m[1],+m[4],+m[5]).getTime();
+  return Date.parse(s);
+}
+function parseDuration(s){
+  s=String(s||'').trim();if(!s)return 0;
+  var m=/^(\d+):(\d{2})(?::(\d{2}))?$/.exec(s);if(m)return m[3]!=null?(+m[1])*3600+(+m[2])*60+(+m[3]):(+m[1])*60+(+m[2]);
+  var t=0,h=/(\d+)\s*h/.exec(s),mi=/(\d+)\s*m(?!s)/.exec(s),se=/(\d+)\s*s/.exec(s);
+  if(h)t+=h[1]*3600;if(mi)t+=mi[1]*60;if(se)t+=+se[1];
+  if(!h&&!mi&&!se&&/^\d+$/.test(s))t=+s;
+  return t;
+}
+/* reads Lift Log, Strong and Hevy CSV files into a common row shape */
+function readWorkoutCSV(text,opts){
+  text=text.replace(/^﻿/,'');
+  var first=text.split(/\r?\n/)[0]||'';
+  var sep=(first.split(';').length>first.split(',').length)?';':',';
+  var rows=parseCSV(text,sep);if(rows.length<2)throw new Error('empty');
   var h=rows.shift().map(function(x){return x.trim().toLowerCase()});
   var col=function(){for(var i=0;i<arguments.length;i++){var k=h.indexOf(arguments[i]);if(k>-1)return k}return -1};
-  var cT=col('title'),cS=col('start_time'),cE=col('end_time'),cX=col('exercise','exercise_title'),cN=col('set_number','set_index'),cY=col('set_type'),cW=col('weight_kg'),cR=col('reps'),cD=col('duration_seconds'),cO=col('notes','exercise_notes');
-  if(cS<0||cX<0)throw new Error('cols');
-  var zeroBased=h[cN]==='set_index',byKey={},order=[],created=0;
+  var fmt=h.indexOf('exercise_title')>-1?'hevy':h.indexOf('exercise name')>-1?'strong':h.indexOf('exercise')>-1?'liftlog':null;
+  if(!fmt)throw new Error('format');
+  var out=[];
   rows.forEach(function(r){
     var g=function(c){return c>-1&&r[c]!=null?String(r[c]).trim():''};
-    var start=Date.parse(g(cS));if(isNaN(start))return;
-    var key=g(cT)+'|'+start;
-    var w=byKey[key];if(!w){var end=Date.parse(g(cE));w=byKey[key]={id:uid(),name:g(cT)||greet(start),start:start,end:isNaN(end)?start:end,note:'',exercises:[]};order.push(w)}
-    var name=g(cX);if(!name)return;
-    var e=allEx().filter(function(x){return x.name.toLowerCase()===name.toLowerCase()})[0];
-    var wt=g(cW),dur=g(cD);
-    if(!e){e={id:'c_'+uid(),name:name,muscle:'Full Body',equip:'Other',type:dur&&!wt?'dur':(wt?'wr':'reps'),sec:[]};S.profile.customEx.push(e);created++}
-    var sn=parseInt(g(cN),10);var first=zeroBased?sn===0:sn===1;
+    var o={};
+    if(fmt==='strong'){
+      var unitCol=col('weight unit');
+      o.title=g(col('workout name'));o.start=parseWhen(g(col('date')));o.end=o.start+parseDuration(g(col('duration')))*1000;
+      o.ex=g(col('exercise name'));var so=g(col('set order'));
+      if(/^\d+$/.test(so)){o.n=+so;o.t='n'}else if(/^w/i.test(so)){o.n=0;o.t='w'}else if(/^d/i.test(so)){o.n=0;o.t='d'}else if(/^f/i.test(so)){o.n=0;o.t='f'}else return;
+      var wv=parseNum(g(col('weight'))),u=unitCol>-1?g(unitCol).toLowerCase():(opts&&opts.unit)||'kg';
+      o.w=wv==null?null:(/lb/.test(u)?wv/KG:wv);o.r=parseInt(g(col('reps')),10);o.secs=parseNum(g(col('seconds')));
+      o.note=g(col('notes'));o.wnote=g(col('workout notes'));o.rpe=parseNum(g(col('rpe')));o.newEx=false;
+    }else if(fmt==='hevy'){
+      o.title=g(col('title'));o.start=parseWhen(g(col('start_time')));o.end=parseWhen(g(col('end_time')));
+      o.ex=g(col('exercise_title'));var si=parseInt(g(col('set_index')),10);o.newEx=si===0;
+      o.t={warmup:'w',dropset:'d',failure:'f'}[g(col('set_type')).toLowerCase()]||'n';
+      var kg=parseNum(g(col('weight_kg'))),lb=parseNum(g(col('weight_lbs')));o.w=kg!=null?kg:(lb!=null?lb/KG:null);
+      o.r=parseInt(g(col('reps')),10);o.secs=parseNum(g(col('duration_seconds')));o.note=g(col('exercise_notes'));o.wnote=g(col('description'));o.rpe=parseNum(g(col('rpe')));
+    }else{
+      o.title=g(col('title'));o.start=parseWhen(g(col('start_time')));o.end=parseWhen(g(col('end_time')));
+      o.ex=g(col('exercise'));o.newEx=parseInt(g(col('set_number')),10)===1;
+      o.t={normal:'n',warmup:'w',dropset:'d',failure:'f'}[g(col('set_type')).toLowerCase()]||'n';
+      o.w=parseNum(g(col('weight_kg')));o.r=parseInt(g(col('reps')),10);o.secs=parseNum(g(col('duration_seconds')));o.note=g(col('notes'));o.wnote='';o.rpe=null;
+    }
+    if(isNaN(o.start)||!o.ex)return;
+    if(isNaN(o.end)||o.end<o.start)o.end=o.start;
+    if(isNaN(o.r))o.r=null;
+    out.push(o);
+  });
+  return {fmt:fmt,rows:out,needsUnit:fmt==='strong'&&col('weight unit')<0};
+}
+function importCSV(text,opts){
+  var parsed=readWorkoutCSV(text,opts),byKey={},order=[],created=0;
+  parsed.rows.forEach(function(o){
+    var key=o.title+'|'+o.start,w=byKey[key];
+    if(!w){w=byKey[key]={id:uid(),name:o.title||greet(o.start),start:o.start,end:o.end,note:o.wnote||'',exercises:[]};order.push(w)}
+    var e=findExercise(o.ex);
+    if(!e){
+      var hasW=parsed.rows.some(function(x){return x.ex===o.ex&&x.w>0}),hasT=parsed.rows.some(function(x){return x.ex===o.ex&&x.secs>0});
+      var hasR=parsed.rows.some(function(x){return x.ex===o.ex&&x.r>0});
+      e={id:'c_'+uid(),name:o.ex,muscle:guessMuscle(o.ex),equip:guessEquip(o.ex),type:hasW?'wr':(hasT&&!hasR?'dur':'reps'),sec:[]};
+      S.profile.customEx.push(e);created++;
+    }
     var last=w.exercises[w.exercises.length-1];
-    if(!last||last.ex!==e.id||first){last={ex:e.id,note:'',sets:[]};w.exercises.push(last)}
-    if(!last.note&&g(cO))last.note=g(cO);
-    var st={normal:'n',warmup:'w',dropset:'d',failure:'f'}[g(cY).toLowerCase()]||'n';
-    last.sets.push({t:st,w:e.type==='wr'?(parseNum(wt)||0):null,r:e.type==='dur'?(parseNum(dur)||0):(parseInt(g(cR),10)||0)});
+    var startNew=!last||last.ex!==e.id||(parsed.fmt==='strong'?(o.t==='n'&&o.n===1&&last.sets.some(function(s){return s.t==='n'})):o.newEx);
+    if(startNew){last={ex:e.id,note:'',sets:[]};w.exercises.push(last)}
+    if(!last.note&&o.note)last.note=o.note;
+    var s={t:o.t,w:e.type==='wr'?(o.w||0):null,r:e.type==='dur'?(o.secs||0):(o.r||0)};
+    if(o.rpe)s.rpe=o.rpe;
+    last.sets.push(s);
   });
   var added=0;
   order.sort(function(a,b){return a.start-b.start}).forEach(function(w){
+    w.exercises=w.exercises.filter(function(e){return e.sets.length});
     if(!w.exercises.length)return;
-    if(S.workouts.some(function(x){return Math.abs(x.start-w.start)<1000}))return;
+    if(S.workouts.some(function(x){return Math.abs(x.start-w.start)<60000}))return;
     w.dur=Math.max(0,Math.round((w.end-w.start)/1000));
     S.workouts.push(w);added++;
   });
@@ -1098,17 +1215,31 @@ function importCSV(text){
   S.workouts.slice().reverse().forEach(function(w){var t=totals(w,false);w.vol=t.vol;w.sets=t.sets;w.prs=calcPRs(w).length});
   if(created)saveProfile();
   saveWorkouts();
-  return added;
+  return {added:added,created:created,fmt:parsed.fmt,total:order.length};
+}
+function importReport(r){
+  var src={strong:'Strong',hevy:'Hevy',liftlog:'Lift Log'}[r.fmt];
+  if(!r.added)return 'Those '+src+' workouts are already in your history';
+  return 'Imported '+r.added+' workout'+(r.added>1?'s':'')+' from '+src+(r.created?' and added '+r.created+' exercise'+(r.created>1?'s':'')+' to your library':'');
+}
+function runImport(text,opts){
+  try{var r=importCSV(text,opts);toast(importReport(r));S.tab='history';S.ov=[];render()}
+  catch(e){console.error(e);toast('That file is not a Lift Log, Strong or Hevy export')}
 }
 function restoreFrom(file){
   var r=new FileReader();
   r.onload=function(){
     var txt=String(r.result||'');
+    var looksCsv=/\.csv$/i.test(file.name)||!/^\s*\{/.test(txt);
+    if(!looksCsv){
+      try{restoreData(JSON.parse(txt));render()}catch(e){console.error(e);toast('That file is not a Lift Log backup')}
+      return;
+    }
     try{
-      if(/\.csv$/i.test(file.name)||/^﻿?"?title"?,/i.test(txt)){var n=importCSV(txt);toast(n?'Imported '+n+' workout'+(n>1?'s':''):'Those workouts are already in your history');S.tab='history'}
-      else restoreData(JSON.parse(txt));
-      render();
-    }catch(e){console.error(e);toast('That file is not a Lift Log backup or CSV export')}
+      var p=readWorkoutCSV(txt,{});
+      if(p.needsUnit){pushOv({t:'unitask',text:txt,n:p.rows.length});return}
+    }catch(e){console.error(e);toast('That file is not a Lift Log, Strong or Hevy export');return}
+    runImport(txt,{});
   };
   r.readAsText(file);
 }
