@@ -16,6 +16,7 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 - **Supersets** link exercises, and the rest timer starts after the last one in the group
 - **RPE** column to note how hard each set was
 - Rest timer with a **separate time per exercise**, adjustable while it runs
+- **Stopwatch for timed sets** such as planks or runs. Tap to start, tap to stop, and the time is filled in and the set logged. You can still type times by hand.
 - **Estimated finish time**, based on your own pace
 - Personal records for heaviest weight, estimated 1RM and set volume
 
@@ -27,6 +28,7 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 - **Body weight and measurements** (body fat, waist, chest, arms, thighs, hips, neck), each with a chart
 
 ### Organising
+- **Program templates:** Push Pull Legs, Upper / Lower, Full Body, Strength 5×5, PHUL, Bro Split and Beginner Full Body. Preview each day, then add a program as a folder of routines you can edit.
 - **Routine folders**
 - About 70 built-in exercises plus your own, each with primary and secondary muscles
 
