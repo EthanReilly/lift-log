@@ -20,15 +20,28 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 - **Stopwatch for timed sets** such as planks or runs. Tap to start, tap to stop, and the time is filled in and the set logged. You can still type times by hand.
 - **Estimated finish time**, based on your own pace
 - Personal records for heaviest weight, estimated 1RM and set volume
+- **Built-in number pad** for weights, reps and times, with ±2.5 buttons, a plate calculator shortcut and **Log set** (can be turned off in Settings)
+- **Replace exercise** suggests alternatives that work the same muscles, keeping your sets
+- **Sticky notes** per exercise (seat height, grip) that show every time you do it
+- **Edit past workouts**: change sets, names, start time and duration after the fact
+- **Undo** after deleting a set, exercise, workout, routine, folder, goal or body entry
+
+### Smart coaching (each can be switched off in Settings)
+- **Progressive overload targets** suggest today's weight and reps from last time
+- **Plateau alerts** flag lifts with no 1RM progress in 4 weeks and offer a deload week
+- **Live PR banner** the moment a set beats your record
+- **Goals**: a weekly workout target with a ring, plus lift (est. 1RM) and body weight goals
 
 ### Progress
 - History list plus a **calendar** (week, month and year) with a weekly streak
 - Progress chart and history for each exercise
+- **Share card**: turn any workout into an image (dark, light or your own photo) to share or save
 - **Muscle maps** (front and back body diagrams) for each exercise, each workout and each week, with a 10–20 sets per muscle guide
 - Weekly charts of workouts, hours and volume
 - **Body weight and measurements** (body fat, waist, chest, arms, thighs, hips, neck), each with a chart
 
 ### Organising
+- **First-launch setup**: choose units, rest time and a starting program, or import from Strong or Hevy
 - **Program templates:** Push Pull Legs, Upper / Lower, Full Body, Strength 5×5, PHUL, Bro Split and Beginner Full Body. Preview each day, then add a program as a folder of routines you can edit.
 - **Routine folders**
 - About 70 built-in exercises plus your own, each with primary and secondary muscles
@@ -37,6 +50,8 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 - **Now playing banner** for any music app, with play, pause and skip. Tap the song to open the app it's playing from.
 - **Rest alarm** with volume, sound and vibration settings. It briefly pauses your music so you hear it, and it works with the screen off.
 - **Weekly automatic backups** to a folder you choose, such as OneDrive, even when the app is closed. The last 8 are kept.
+- **Lock-screen controls**: a notification with the current set, a rest countdown and **Done set**, **+15 s** and **Skip rest** buttons
+- Share workout images straight to other apps
 - Keeps the screen on during workouts, and the back button closes screens instead of quitting
 
 ## Your data
@@ -53,6 +68,8 @@ Everything stays on your device. There are no accounts, servers or tracking.
 2. Open it and allow installs from your browser or file manager when Android asks.
 3. Install new versions over the top. Your data is kept.
 
+For lock-screen controls, allow notifications when Android asks (the first time you start a workout).
+
 To use the now playing banner, allow **notification access** when asked. If Android says the setting is restricted, go to **Settings → Apps → Lift Log → ⋮ → Allow restricted settings** and try again. Android does this for apps installed outside the Play Store.
 
 ## Project layout
@@ -65,11 +82,12 @@ icons/                  App icons
 native/                 Android app (Capacitor wrapper around index.html)
   prepare-web.js        Copies index.html into the Android build
   android/app/src/main/java/com/ethanreilly/liftlog/
-    LiftLogPlugin.java  Now playing, alarm, backups, keep-awake and back button
+    LiftLogPlugin.java  Now playing, alarm, backups, workout notification, sharing, keep-awake and back button
     Alarm.java          Alarm sounds, vibration and pausing other audio
     BackupWriter.java   Writes backup files to the chosen folder
     BackupWorker.java   Weekly background backup
     MediaListener.java  Required for notification access (now playing)
+    NotifReceiver.java  Handles the workout notification's buttons
   liftlog-release.p12   Signing key (encrypted)
 .github/workflows/android.yml   Builds and publishes the APK
 ```

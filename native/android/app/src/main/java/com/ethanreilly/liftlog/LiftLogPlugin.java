@@ -1,6 +1,17 @@
 package com.ethanreilly.liftlog;
 
+import android.Manifest;
 import android.app.Activity;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.ClipData;
+import android.graphics.drawable.Icon;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
+import java.io.File;
+import java.io.FileOutputStream;
 import android.app.ActivityOptions;
 import android.app.PendingIntent;
 import android.content.ComponentName;
@@ -45,6 +56,10 @@ public class LiftLogPlugin extends Plugin {
     private Runnable restRunnable;
     private PowerManager.WakeLock restLock;
     private String pendingExport;
+    private boolean pendingExportB64;
+    static LiftLogPlugin instance;
+    private static final String WORKOUT_CHANNEL = "workout";
+    static final int WORKOUT_NOTIF = 4101;
 
     private static final Map<String, String> KNOWN_APPS = new HashMap<>();
 
@@ -62,6 +77,7 @@ public class LiftLogPlugin extends Plugin {
 
     @Override
     public void load() {
+        instance = this;
         getActivity()
             .getOnBackPressedDispatcher()
             .addCallback(
@@ -453,6 +469,7 @@ public class LiftLogPlugin extends Plugin {
     @PluginMethod
     public void exportFile(PluginCall call) {
         pendingExport = call.getString("data", "");
+        pendingExportB64 = Boolean.TRUE.equals(call.getBoolean("base64", false));
         Intent i = new Intent(Intent.ACTION_CREATE_DOCUMENT);
         i.addCategory(Intent.CATEGORY_OPENABLE);
         i.setType(call.getString("mime", "application/octet-stream"));
@@ -471,13 +488,145 @@ public class LiftLogPlugin extends Plugin {
         }
         try (OutputStream os = getContext().getContentResolver().openOutputStream(result.getData().getData())) {
             if (os == null) throw new Exception("Could not open file");
-            os.write((pendingExport == null ? "" : pendingExport).getBytes(StandardCharsets.UTF_8));
+            String data = pendingExport == null ? "" : pendingExport;
+            os.write(pendingExportB64 ? Base64.decode(data, Base64.DEFAULT) : data.getBytes(StandardCharsets.UTF_8));
             r.put("saved", true);
             call.resolve(r);
         } catch (Exception e) {
             call.reject(String.valueOf(e.getMessage()));
         } finally {
             pendingExport = null;
+            pendingExportB64 = false;
         }
+    }
+
+    /* ---------------- share an image ---------------- */
+
+    @PluginMethod
+    public void shareImage(PluginCall call) {
+        try {
+            byte[] bytes = Base64.decode(call.getString("data", ""), Base64.DEFAULT);
+            File dir = new File(getContext().getCacheDir(), "share");
+            if (!dir.exists()) dir.mkdirs();
+            File f = new File(dir, call.getString("name", "lift-log.png"));
+            try (FileOutputStream fo = new FileOutputStream(f)) {
+                fo.write(bytes);
+            }
+            Uri uri = FileProvider.getUriForFile(getContext(), getContext().getPackageName() + ".fileprovider", f);
+            Intent send = new Intent(Intent.ACTION_SEND);
+            send.setType("image/png");
+            send.putExtra(Intent.EXTRA_STREAM, uri);
+            send.setClipData(ClipData.newRawUri("", uri));
+            send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            Intent chooser = Intent.createChooser(send, "Share workout");
+            chooser.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+            getActivity().startActivity(chooser);
+            call.resolve();
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
+    }
+
+    /* ---------------- lock-screen workout notification ---------------- */
+
+    private void ensureWorkoutChannel() {
+        if (Build.VERSION.SDK_INT < 26) return;
+        NotificationManager nm = (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+        if (nm.getNotificationChannel(WORKOUT_CHANNEL) != null) return;
+        NotificationChannel ch = new NotificationChannel(WORKOUT_CHANNEL, "Workout in progress", NotificationManager.IMPORTANCE_LOW);
+        ch.setDescription("Rest timer and Done set button while you train");
+        ch.setSound(null, null);
+        ch.enableVibration(false);
+        ch.setShowBadge(false);
+        ch.setLockscreenVisibility(Notification.VISIBILITY_PUBLIC);
+        nm.createNotificationChannel(ch);
+    }
+
+    private PendingIntent actionIntent(String a, int code) {
+        Intent i = new Intent(getContext(), NotifReceiver.class);
+        i.setAction("com.ethanreilly.liftlog.NOTIF_" + a);
+        i.putExtra("a", a);
+        return PendingIntent.getBroadcast(getContext(), code, i, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+    }
+
+    @PluginMethod
+    public void workoutNotif(PluginCall call) {
+        Context ctx = getContext();
+        if (Build.VERSION.SDK_INT >= 33 && ContextCompat.checkSelfPermission(ctx, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+            SharedPreferences sp = ctx.getSharedPreferences("liftlog", Context.MODE_PRIVATE);
+            if (!sp.getBoolean("askedNotif", false)) {
+                sp.edit().putBoolean("askedNotif", true).apply();
+                ActivityCompat.requestPermissions(getActivity(), new String[] { Manifest.permission.POST_NOTIFICATIONS }, 4102);
+            }
+            JSObject r = new JSObject();
+            r.put("shown", false);
+            call.resolve(r);
+            return;
+        }
+        try {
+            ensureWorkoutChannel();
+            long start = (long) call.getData().optDouble("start", (double) System.currentTimeMillis());
+            long restEnd = (long) call.getData().optDouble("restEnd", 0d);
+            boolean resting = restEnd > System.currentTimeMillis();
+            boolean hasNext = Boolean.TRUE.equals(call.getBoolean("hasNext", false));
+            Intent open = ctx.getPackageManager().getLaunchIntentForPackage(ctx.getPackageName());
+            if (open != null) open.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+            PendingIntent content = open == null ? null : PendingIntent.getActivity(ctx, 4103, open, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+            Notification.Builder b = Build.VERSION.SDK_INT >= 26 ? new Notification.Builder(ctx, WORKOUT_CHANNEL) : new Notification.Builder(ctx);
+            b.setSmallIcon(R.drawable.ic_stat_liftlog)
+                .setContentTitle(call.getString("title", "Workout in progress"))
+                .setContentText(call.getString("text", ""))
+                .setSubText(call.getString("sub", ""))
+                .setOngoing(true)
+                .setOnlyAlertOnce(true)
+                .setShowWhen(true)
+                .setUsesChronometer(true)
+                .setVisibility(Notification.VISIBILITY_PUBLIC)
+                .setColor(0xFF4F7CFF);
+            if (Build.VERSION.SDK_INT >= 31) b.setCategory(Notification.CATEGORY_WORKOUT);
+            if (Build.VERSION.SDK_INT < 26) b.setPriority(Notification.PRIORITY_LOW).setSound(null).setVibrate(null);
+            if (resting) {
+                b.setWhen(restEnd);
+                b.setChronometerCountDown(true);
+            } else {
+                b.setWhen(start);
+            }
+            if (content != null) b.setContentIntent(content);
+            if (hasNext) b.addAction(new Notification.Action.Builder(Icon.createWithResource(ctx, R.drawable.ic_stat_liftlog), "Done set", actionIntent("done", 1)).build());
+            if (resting) {
+                b.addAction(new Notification.Action.Builder(Icon.createWithResource(ctx, R.drawable.ic_stat_liftlog), "+15 s", actionIntent("plus15", 2)).build());
+                b.addAction(new Notification.Action.Builder(Icon.createWithResource(ctx, R.drawable.ic_stat_liftlog), "Skip rest", actionIntent("skip", 3)).build());
+            }
+            NotificationManagerCompat.from(ctx).notify(WORKOUT_NOTIF, b.build());
+            JSObject r = new JSObject();
+            r.put("shown", true);
+            call.resolve(r);
+        } catch (SecurityException e) {
+            JSObject r = new JSObject();
+            r.put("shown", false);
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
+    }
+
+    @PluginMethod
+    public void clearWorkoutNotif(PluginCall call) {
+        NotificationManagerCompat.from(getContext()).cancel(WORKOUT_NOTIF);
+        call.resolve();
+    }
+
+    void handleNotifAction(String a) {
+        JSObject o = new JSObject();
+        o.put("action", a);
+        notifyListeners("notifAction", o, true);
+    }
+
+    @Override
+    protected void handleOnDestroy() {
+        try {
+            NotificationManagerCompat.from(getContext()).cancel(WORKOUT_NOTIF);
+        } catch (Exception ignored) {}
+        if (instance == this) instance = null;
     }
 }
