@@ -282,6 +282,15 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .tex{display:grid;grid-template-columns:3.6rem 1fr;gap:4px 10px;font-size:14px}
 .tex span:nth-child(odd){color:var(--muted);font-variant-numeric:tabular-nums}
 .tplbtn{display:flex;width:100%;align-items:center;gap:12px;text-align:left;margin-bottom:12px}
+.ex-h{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
+.sb.reordering .ex>:not(.ex-h){display:none}
+.sb.reordering .ex{padding:6px 10px;margin-top:8px}
+.sb.reordering .ex-h .ib{visibility:hidden}
+.sb.reordering .sslabel{display:none}
+.ex.ph{opacity:.4;border-style:dashed;border-color:var(--accent)}
+.dragghost{position:fixed;left:16px;right:16px;z-index:95;pointer-events:none;display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:16px;background:var(--surface);border:2px solid var(--accent);box-shadow:0 14px 36px rgba(0,0,0,.45);transform:scale(1.04);transition:transform .12s}
+.dragghost b{flex:1;min-width:0;color:var(--accent);font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dragghost span{color:var(--muted);font-size:13px;font-weight:600}
 .banner{background:var(--warn-soft);color:var(--fg);border-radius:14px;padding:12px 14px;margin-bottom:14px;font-size:14px}
 </style>
 </head>
@@ -769,6 +778,7 @@ function sheetView(){
   if(isW)h+='<textarea class="note-in" id="anote" data-in="anote" rows="1" placeholder="Add workout notes…" aria-label="Workout notes">'+esc(a.note||'')+'</textarea>';
   a.exercises.forEach(function(ex,i){h+=exCard(ex,i,isW)});
   if(!a.exercises.length)h+='<div class="empty">'+emptyIll()+'<h3>Add your first exercise</h3><p>Pick from the library or create your own.</p></div>';
+  if(a.exercises.length>1)h+='<p class="sub" style="margin:12px 2px 0;text-align:center">Hold an exercise name and drag to reorder.</p>';
   h+='<button class="btn block" style="margin-top:16px" data-act="add-ex">'+I.plusS+' Add exercise</button>';
   h+='<button class="btn link block" style="margin-top:8px" data-act="'+(isW?'discard-ask':'del-routine-ask')+'"'+(!isW&&!a.rid?' hidden':'')+'>'+(isW?'Discard workout':'Delete routine')+'</button>';
   return h+'</div>'+(showBanner()?bannerHtml():'')+'</section>';
@@ -792,7 +802,7 @@ function exCard(ex,exi,isW){
   var unit=S.profile.unit.toUpperCase(),rs=restFor(ex.ex),rcustom=S.profile.exRest&&S.profile.exRest[ex.ex]!=null;
   var h='';
   if(ss&&ss.first)h+='<div class="sslabel" style="color:'+ss.color+'">'+I.link+'Superset · rest starts after '+esc(ss.lastName)+'</div>';
-  h+='<section class="card ex'+(ss?' ss':'')+(ss&&!ss.first?' ss-next':'')+'"'+(ss?' style="border-left-color:'+ss.color+'"':'')+'><div class="ex-h"><button class="ex-n ell" data-act="exopen" data-id="'+esc(ex.ex)+'">'+esc(d.name)+'</button>'+
+  h+='<section class="card ex'+(ss?' ss':'')+(ss&&!ss.first?' ss-next':'')+'"'+(ss?' style="border-left-color:'+ss.color+'"':'')+' data-eid="'+esc(ex.id)+'"><div class="ex-h" data-drag="1"><button class="ex-n ell" data-act="exopen" data-id="'+esc(ex.ex)+'">'+esc(d.name)+'</button>'+
    (ty==='wr'&&d.equip==='Barbell'?'<button class="ib sm" data-act="plates-open" data-exi="'+exi+'" aria-label="Plate calculator">'+I.plate+'</button>':'')+
    '<button class="ib" data-act="ex-menu" data-exi="'+exi+'" aria-label="Exercise options">'+I.more+'</button></div>'+
    '<button class="rchip'+(rcustom?' on':'')+'" data-act="exrest-open" data-id="'+esc(ex.ex)+'">'+I.timerS+(rs?'Rest '+fmtClock(rs):'Rest off')+'</button>'+
@@ -1606,8 +1616,62 @@ function onBack(){
   nat('minimize');
 }
 
+/* ---------- hold and drag to reorder exercises ---------- */
+var drag=null,pendDrag=null,suppressClick=false;
+function startDrag(p){
+  pendDrag=null;
+  var sb=p.card.closest('.sb');if(!sb||!S.active)return;
+  var ex=S.active.exercises.filter(function(e){return e.id===p.card.dataset.eid})[0];if(!ex)return;
+  try{if(navigator.vibrate)navigator.vibrate(25)}catch(e){}
+  sb.classList.add('reordering');p.card.classList.add('ph');
+  var r=p.card.getBoundingClientRect();sb.scrollTop+=r.top+r.height/2-p.y;
+  var g=document.createElement('div');g.className='dragghost';g.innerHTML='<b>'+esc(exOf(ex.ex).name)+'</b><span>'+ex.sets.length+' set'+(ex.sets.length===1?'':'s')+'</span>';
+  document.body.appendChild(g);
+  drag={card:p.card,sb:sb,ghost:g,y:p.y};moveDrag();
+  (function loop(){if(!drag)return;var sr=drag.sb.getBoundingClientRect();
+    if(drag.y<sr.top+70)drag.sb.scrollTop-=10;else if(drag.y>sr.bottom-70)drag.sb.scrollTop+=10;
+    placeDrag();requestAnimationFrame(loop)})();
+}
+function moveDrag(){if(!drag)return;drag.ghost.style.top=(drag.y-28)+'px';placeDrag()}
+function placeDrag(){
+  var cards=$$('.ex',drag.sb).filter(function(c){return c!==drag.card}),target=null;
+  for(var i=0;i<cards.length;i++){var r=cards[i].getBoundingClientRect();if(drag.y<r.top+r.height/2){target=cards[i];break}}
+  if(target){if(drag.card.nextElementSibling!==target)target.parentNode.insertBefore(drag.card,target)}
+  else if(cards.length){var last=cards[cards.length-1];if(last.nextElementSibling!==drag.card)last.parentNode.insertBefore(drag.card,last.nextElementSibling)}
+}
+function endDrag(){
+  if(pendDrag){clearTimeout(pendDrag.timer);pendDrag=null}
+  if(!drag)return;
+  var ids=$$('.ex',drag.sb).map(function(c){return c.dataset.eid}),A=S.active;
+  drag.ghost.remove();drag.sb.classList.remove('reordering');drag=null;
+  suppressClick=true;setTimeout(function(){suppressClick=false},80);
+  if(A){var before=A.exercises.map(function(e){return e.id}).join();
+    A.exercises.sort(function(a,b){return ids.indexOf(a.id)-ids.indexOf(b.id)});
+    if(A.exercises.map(function(e){return e.id}).join()!==before)saveActiveSoon()}
+  render();
+}
+function bindDrag(){
+  document.addEventListener('pointerdown',function(e){
+    var h=e.target.closest('[data-drag]');if(!h||drag||e.button>0)return;
+    if(e.target.closest('[data-act="ex-menu"],[data-act="plates-open"]'))return;
+    var card=h.closest('.ex');if(!card||!card.dataset.eid)return;
+    if(pendDrag)clearTimeout(pendDrag.timer);
+    var p={card:card,x:e.clientX,y:e.clientY};p.timer=setTimeout(function(){if(pendDrag===p)startDrag(p)},380);pendDrag=p;
+  });
+  document.addEventListener('pointermove',function(e){
+    if(drag){drag.y=e.clientY;moveDrag();return}
+    if(pendDrag&&(Math.abs(e.clientX-pendDrag.x)>10||Math.abs(e.clientY-pendDrag.y)>10)){clearTimeout(pendDrag.timer);pendDrag=null}
+  });
+  document.addEventListener('pointerup',endDrag);
+  document.addEventListener('pointercancel',endDrag);
+  document.addEventListener('touchmove',function(e){if(drag)e.preventDefault()},{passive:false});
+  document.addEventListener('contextmenu',function(e){if(drag||pendDrag)e.preventDefault()});
+  document.addEventListener('click',function(e){if(suppressClick){e.preventDefault();e.stopPropagation();suppressClick=false}},true);
+}
+
 /* ---------- events ---------- */
 function bind(){
+  bindDrag();
   document.addEventListener('click',function(e){var t=e.target.closest('[data-act]');if(!t)return;act(t.dataset.act,t.dataset,t,e)});
   document.addEventListener('input',function(e){
     var t=e.target,k=t.dataset&&t.dataset.in;if(!k)return;var A=S.active;

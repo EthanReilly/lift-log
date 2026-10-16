@@ -15,6 +15,7 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 - **Plate calculator** shows the plates for each side, for your bar and the plates your gym has
 - **Supersets** link exercises, and the rest timer starts after the last one in the group
 - **RPE** column to note how hard each set was
+- **Hold and drag** an exercise name to reorder exercises in a workout or routine
 - Rest timer with a **separate time per exercise**, adjustable while it runs
 - **Stopwatch for timed sets** such as planks or runs. Tap to start, tap to stop, and the time is filled in and the set logged. You can still type times by hand.
 - **Estimated finish time**, based on your own pace
