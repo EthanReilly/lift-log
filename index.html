@@ -1631,8 +1631,23 @@ function bind(){
     if(t.id==='restore-file'){if(t.files&&t.files[0])restoreFrom(t.files[0]);t.value='';return}
     if(t.id==='alarm-vol'){saveProfile();return}
     if(t.dataset&&t.dataset.in==='t'&&S.active){var s=S.active.exercises[+t.dataset.exi].sets[+t.dataset.si];t.value=s.r==null?'':fmtMS(s.r)}});
-  document.addEventListener('focusin',function(e){var t=e.target;if(t&&(t.tagName==='TEXTAREA'||(t.tagName==='INPUT'&&t.type!=='range'&&t.type!=='file')))document.body.classList.add('typing')});
-  document.addEventListener('focusout',function(){setTimeout(function(){var a=document.activeElement;if(!a||!/^(INPUT|TEXTAREA)$/.test(a.tagName))document.body.classList.remove('typing')},60)});
+  // Hide the music banner only while the on-screen keyboard is open. Closing the keyboard on Android
+  // does not blur the input, so watch the visible height instead of focus.
+  var kbBase={},kbOpen=false;
+  function kbCheck(){
+    var vv=window.visualViewport,h=vv?vv.height:window.innerHeight,w=window.innerWidth;
+    if(!kbBase[w]||h>kbBase[w])kbBase[w]=h;
+    var a=document.activeElement,typing=!!(a&&(a.tagName==='TEXTAREA'||(a.tagName==='INPUT'&&a.type!=='range'&&a.type!=='file')));
+    var open=typing&&h<kbBase[w]-120;
+    if(open!==kbOpen){
+      kbOpen=open;document.body.classList.toggle('typing',open);
+      if(!open&&typing)a.blur();
+    }
+  }
+  window.addEventListener('resize',kbCheck);
+  if(window.visualViewport)window.visualViewport.addEventListener('resize',kbCheck);
+  document.addEventListener('focusin',function(){setTimeout(kbCheck,300)});
+  document.addEventListener('focusout',function(){setTimeout(kbCheck,60)});
   document.addEventListener('focusout',function(){setTimeout(function(){if(S.pending){var a=document.activeElement;if(!a||!/^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))render()}},50)});
   document.addEventListener('keydown',function(e){if(e.key==='Enter'&&e.target.dataset&&/^(aname|exq|pickq)$/.test(e.target.dataset.in||'')){e.target.blur()}});
   document.addEventListener('visibilitychange',function(){
