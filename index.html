@@ -85,7 +85,7 @@ h2{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
 .search input{flex:1;min-width:0;background:none;border:0;padding:12px 0;outline:0}
 .field{width:100%;background:var(--surface2);border:1px solid transparent;border-radius:12px;padding:12px 14px;outline:0}
 .field:focus{border-color:var(--accent)}
-label.lbl{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 6px;letter-spacing:.04em;text-transform:uppercase}
+label.lbl,span.lbl{display:block;font-size:12px;font-weight:700;color:var(--muted);margin:14px 0 6px;letter-spacing:.04em;text-transform:uppercase}
 /* history */
 .month{font-size:13px;font-weight:700;color:var(--muted);margin:20px 0 8px}
 .wk{display:block;width:100%;text-align:left}
@@ -158,6 +158,9 @@ button.pv:hover{background:var(--surface2)}
 .btns{display:flex;gap:10px}.btns .btn{flex:1}
 .trophy{color:var(--warn)}
 .pr-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;color:var(--warn);background:var(--warn-soft);padding:2px 7px;border-radius:999px}
+.sech{margin:18px 4px 6px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.pick-row:active,.opt:active,.altr:active{background:var(--surface2)}
+.pick-row .pill{flex:none}
 .pick-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 10px;border-radius:12px}
 .pick-row:hover{background:var(--surface2)}
 .pick-row.sel{background:var(--accent-soft)}
@@ -905,7 +908,7 @@ function ovView(o,i){
     case 'setmenu':{var s=S.active.exercises[o.exi].sets[o.si];var opts=[['n','Working set'],['w','Warm-up set'],['d','Drop set'],['f','Failure set']];
       return '<div class="scrim" data-act="scrim"><div class="panel" role="dialog" aria-modal="true">'+opts.map(function(x){return '<button class="opt" data-act="set-type" data-t="'+x[0]+'"'+(s.t===x[0]?' aria-current="true"':'')+'>'+x[1]+(s.t===x[0]&&s.tAuto?' <span class="sub">(auto)</span>':'')+'</button>'}).join('')+'<button class="opt dng" data-act="set-del">'+I.trash+' Delete set</button></div></div>'}
     case 'exmenu':{var n=S.active.exercises.length,exm=S.active.exercises[o.exi],tym=exOf(exm.ex).type,ssm=ssInfo(S.active.exercises,o.exi);return '<div class="scrim" data-act="scrim"><div class="panel" role="dialog" aria-modal="true">'+
-      '<button class="opt" data-act="note-edit" data-id="'+esc(exm.ex)+'">'+I.pin+' Sticky note</button><button class="opt" data-act="swap-open">'+I.repeat+' Replace exercise</button>'+
+      (S.profile.customEx.some(function(x){return x.id===exm.ex})?'<button class="opt" data-act="ex-edit" data-id="'+esc(exm.ex)+'">'+I.edit+' Edit exercise</button>':'')+'<button class="opt" data-act="note-edit" data-id="'+esc(exm.ex)+'">'+I.pin+' Sticky note</button><button class="opt" data-act="swap-open">'+I.repeat+' Replace exercise</button>'+
       (tym==='wr'&&S.active.kind==='workout'?'<button class="opt" data-act="warm-open">'+I.fire+' Add warm-up sets</button>':'')+
       (tym==='wr'?'<button class="opt" data-act="plates-open" data-exi="'+o.exi+'">'+I.plate+' Plate calculator</button>':'')+
       (ssm?'<button class="opt" data-act="ss-remove">'+I.link.replace('class="ic sm"','class="ic"')+' Remove from superset</button>':(o.exi<n-1?'<button class="opt" data-act="ss-next">'+I.link.replace('class="ic sm"','class="ic"')+' Superset with next exercise</button>':''))+
@@ -955,7 +958,11 @@ function ovView(o,i){
 function pickBody(o){var list=filterEx(o.q,o.m);return chipsHtml(o.m,'pickm')+(list.length?list.map(function(e){return exRowHtml(e,true,o.sel.indexOf(e.id)>-1)}).join(''):'<div class="empty"><p>No exercises match.</p></div>')}
 function newExView(o,z,i){
   var opt=function(a,sel){return a.map(function(x){return '<option'+(sel===x?' selected':'')+'>'+x+'</option>'}).join('')};
-  return '<section class="sheet '+z+'"><header class="sh"><button class="ib" data-act="ov-close" aria-label="Close">'+I.x+'</button><h2>New exercise</h2><button class="btn sm" data-act="save-ex">Save</button></header><div class="sb" data-scroll="ov'+i+'"><label class="lbl" for="nx-name">Name</label><input class="field" id="nx-name" placeholder="e.g. Cable Lateral Raise" autocomplete="off"><label class="lbl" for="nx-muscle">Primary muscle</label><select class="field" id="nx-muscle">'+opt(MUSCLES,'Chest')+'</select><span class="lbl">Secondary muscles</span><div class="chips" id="nx-sec" style="flex-wrap:wrap">'+DRAWN.map(function(m){return '<button class="chip" data-act="nx-sec" aria-pressed="false" data-m="'+m+'">'+m+'</button>'}).join('')+'</div><label class="lbl" for="nx-equip">Equipment</label><select class="field" id="nx-equip">'+opt(EQUIP,'Barbell')+'</select><label class="lbl" for="nx-type">Logging type</label><select class="field" id="nx-type">'+Object.keys(TYPES).map(function(k){return '<option value="'+k+'">'+TYPES[k]+'</option>'}).join('')+'</select></div></section>';
+  var ce=o.edit?S.profile.customEx.filter(function(x){return x.id===o.edit})[0]:null,used=ce?sessionsOf(ce.id).length:0;
+  var v=ce||{name:o.name||'',muscle:'Chest',equip:'Barbell',type:'wr',sec:[]},sec=v.sec||[];
+  return '<section class="sheet '+z+'"><header class="sh"><button class="ib" data-act="ov-close" aria-label="Close">'+I.x+'</button><h2>'+(ce?'Edit exercise':'New exercise')+'</h2><button class="btn sm" data-act="save-ex">Save</button></header><div class="sb" data-scroll="ov'+i+'"><label class="lbl" for="nx-name">Name</label><input class="field" id="nx-name" value="'+esc(v.name)+'" placeholder="e.g. Cable Lateral Raise" autocomplete="off"><label class="lbl" for="nx-muscle">Primary muscle</label><select class="field" id="nx-muscle">'+opt(MUSCLES,v.muscle)+'</select><span class="lbl">Secondary muscles</span><div class="chips" id="nx-sec" style="flex-wrap:wrap">'+DRAWN.map(function(m){return '<button class="chip" data-act="nx-sec" aria-pressed="'+(sec.indexOf(m)>-1)+'" data-m="'+m+'">'+m+'</button>'}).join('')+'</div><label class="lbl" for="nx-equip">Equipment</label><select class="field" id="nx-equip">'+opt(EQUIP,v.equip)+'</select><label class="lbl" for="nx-type">Logging type</label><select class="field" id="nx-type">'+Object.keys(TYPES).map(function(k){return '<option value="'+k+'"'+(v.type===k?' selected':'')+'>'+TYPES[k]+'</option>'}).join('')+'</select>'+
+    (ce&&used?'<p class="sub" style="margin:10px 2px 0">Logged in '+used+' workout'+(used===1?'':'s')+'. A new name or muscles update everywhere. Changing the logging type doesn’t convert sets you’ve already logged.</p>':'')+
+    (ce?'<button class="btn link block" style="margin-top:18px" data-act="ex-custom-del-ask" data-id="'+esc(ce.id)+'">Delete exercise</button>':'')+'</div></section>';
 }
 function exDetailView(o,z,i){
   var d=exOf(o.id),ty=d.type,ss=sessionsOf(o.id),mm=musclesOf(o.id);
@@ -966,7 +973,7 @@ function exDetailView(o,z,i){
   var unit=(m==='weight'||m==='1rm'||m==='volume')?' '+S.profile.unit:(m==='reps'?' reps':'');
   var pts=[],rec=null;
   ss.slice().reverse().forEach(function(x){var b=0;x.sets.forEach(function(s){if(isWork(s))b=Math.max(b,val(s))});if(b>0){pts.push({x:x.w.start,y:b});if(!rec||b>=rec.y)rec={x:x.w.start,y:b}}});
-  var h='<section class="sheet '+z+'"><header class="sh"><button class="ib" data-act="ov-close" aria-label="Back">'+I.left+'</button><h2 class="ell">'+esc(d.name)+'</h2><span style="width:40px"></span></header><div class="sb" data-scroll="ov'+i+'"><div class="sub" style="margin-bottom:12px">'+esc(d.muscle)+' · '+esc(d.equip)+' · '+TYPES[ty]+'</div>';
+  var h='<section class="sheet '+z+'"><header class="sh"><button class="ib" data-act="ov-close" aria-label="Back">'+I.left+'</button><h2 class="ell">'+esc(d.name)+'</h2>'+(d.id.indexOf('c_')===0&&LIBMAP[d.id]==null&&S.profile.customEx.some(function(x){return x.id===d.id})?'<button class="btn sm sec" data-act="ex-edit" data-id="'+esc(d.id)+'">'+I.edit+' Edit</button>':'<span style="width:40px"></span>')+'</header><div class="sb" data-scroll="ov'+i+'"><div class="sub" style="margin-bottom:12px">'+esc(d.muscle)+' · '+esc(d.equip)+' · '+TYPES[ty]+'</div>';
   h+=plateauCard(o.id)+(stickyHtml(o.id)||'<button class="btn sm sec" style="margin-bottom:12px" data-act="note-edit" data-id="'+esc(o.id)+'">'+I.pin+' Add sticky note</button>');
   if(mm.p.length||mm.s.length){
     h+='<div class="card" style="margin-bottom:14px">'+bodyMap(function(x){return mm.p.indexOf(x)>-1?1:mm.s.indexOf(x)>-1?0.25:0},function(x){return x+(mm.p.indexOf(x)>-1?' (primary)':mm.s.indexOf(x)>-1?' (secondary)':'')})+
@@ -978,7 +985,7 @@ function exDetailView(o,z,i){
   h+='<h2>History</h2>';
   if(!ss.length)h+='<p class="sub">Nothing yet.</p>';
   ss.forEach(function(x){var n=0;h+='<div class="card" style="margin-bottom:10px"><div class="row"><b class="grow">'+fDate(x.w.start)+'</b><span class="sub ell">'+esc(x.w.name)+'</span></div><div class="tbl">'+x.sets.map(function(s){if(s.t!=='w')n++;return '<span class="sub">'+setLabel(s,n)+'</span><span>'+esc(fmtSet(s,ty))+(ty==='wr'?' '+S.profile.unit:'')+'</span><span>'+(s.pr?I.trophy:'')+'</span>'}).join('')+'</div></div>'});
-  if(d.id.indexOf('c_')===0&&!ss.length)h+='<button class="btn link block" data-act="ex-custom-del" data-id="'+esc(d.id)+'">Delete exercise</button>';
+
   return h+'</div></section>';
 }
 function wDetailView(o,z,i){
@@ -1284,23 +1291,37 @@ function goalAddView(o,z,i){
 function stickyHtml(exId){var n=S.profile.exNotes&&S.profile.exNotes[exId];return n?'<button class="pin" data-act="note-edit" data-id="'+esc(exId)+'">'+I.pin+'<span>'+esc(n)+'</span></button>':''}
 
 /* ---------- swap exercise ---------- */
+var NAMESTOP=['with','machine','dumbbell','barbell','cable','assisted','seated','standing','smith','single','arm','leg','one','the','and','band','weighted','press','raise'];
+function nameToks(n){return n.toLowerCase().replace(/[^a-z ]+/g,' ').split(/\s+/).filter(function(w){return w.length>2&&NAMESTOP.indexOf(w)<0})}
 function altsFor(id){
-  var a=exOf(id),ma=musclesOf(id),pa=ma.p,sa=ma.s;
+  var a=exOf(id),ma=musclesOf(id),pa=ma.p,sa=ma.s,ta=nameToks(a.name);
   return allEx().filter(function(e){return e.id!==id}).map(function(e){
     var m=musclesOf(e.id),sc=0,lab='';
     if(a.muscle==='Cardio'||e.muscle==='Cardio'){if(a.muscle===e.muscle){sc=10;lab='Same type'}}
     else if(pa.length&&m.p.some(function(x){return pa.indexOf(x)>-1})){
       var inter=m.s.filter(function(x){return sa.indexOf(x)>-1}).length,uni={};m.s.concat(sa).forEach(function(x){uni[x]=1});var nu=Object.keys(uni).length,j=nu?inter/nu:1;
       var pi=m.p.filter(function(x){return pa.indexOf(x)>-1}).length,pu={};m.p.concat(pa).forEach(function(x){pu[x]=1});var pj=pi/Object.keys(pu).length;
-      sc=10+pj*8+j*4+(e.muscle===a.muscle?4:0)+(e.type===a.type?2:0)+(e.equip===a.equip?1:0);lab=pj>=0.99&&j>=0.5?'Same muscles':'Close match';
+      if(!sa.length)j=0.5;
+      var tb=nameToks(e.name),nm=ta.some(function(x){return tb.some(function(y){return y===x||(x.length>3&&y.indexOf(x)===0)||(y.length>3&&x.indexOf(y)===0)})});
+      sc=10+pj*8+j*4+(e.muscle===a.muscle?4:0)+(e.type===a.type?3:0)+(e.equip===a.equip?1:0)+(nm?7:0);lab=nm?'Similar':pj>=0.99&&sa.length&&j>=0.5?'Same muscles':pj>=0.99?'Same muscle':'Close match';
     }else if(pa.length&&m.s.some(function(x){return pa.indexOf(x)>-1})){sc=3;lab='Partly'}
     return {e:e,sc:sc,lab:lab};
   }).filter(function(x){return x.sc>0}).sort(function(x,y){return y.sc-x.sc||x.e.name.localeCompare(y.e.name)}).slice(0,8);
 }
+function swapRow(e,pill){var m=musclesOf(e.id);return '<button class="pick-row" data-act="swap-to" data-id="'+esc(e.id)+'"><span class="badge">'+esc(initials(e.name))+'</span><span class="grow" style="min-width:0"><b class="ell" style="display:block">'+esc(e.name)+'</b><span class="sub">'+esc(pill?[m.p.concat(m.s).join(', '),e.equip].filter(Boolean).join(' · '):e.muscle+' · '+e.equip)+'</span></span>'+(pill?'<span class="pill '+(pill==='Same muscles'||pill==='Same type'||pill==='Similar'?'ok':pill==='Close match'?'hi':'no')+'">'+pill+'</span>':'')+'</button>'}
+function swapBody(o){
+  var ex=S.active&&S.active.exercises[o.exi];if(!ex)return '';
+  var q=(o.q||'').trim(),m=o.m||'All',h=chipsHtml(m,'swapm');
+  if(!q&&m==='All'){var alts=altsFor(ex.ex).slice(0,6);if(alts.length)h+='<h3 class="sech">Best matches</h3>'+alts.map(function(x){return swapRow(x.e,x.lab)}).join('')}
+  var list=filterEx(q,m).filter(function(e){return e.id!==ex.ex});
+  h+='<h3 class="sech">'+(q||m!=='All'?list.length+' exercise'+(list.length===1?'':'s'):'All exercises')+'</h3>';
+  h+=list.length?list.map(function(e){return swapRow(e,'')}).join(''):'<div class="empty"><p>No exercises match. Create it with the button above.</p></div>';
+  return h;
+}
+function refreshSwap(){var o=S.ov[S.ov.length-1];if(!o||o.t!=='swap')return;var b=$('#swap-body');if(b)b.innerHTML=swapBody(o)}
 function swapView(o,z,i){
-  var ex=S.active.exercises[o.exi],d=exOf(ex.ex);
-  var rows=altsFor(ex.ex).map(function(x){var m=musclesOf(x.e.id);return '<button class="altr" data-act="swap-to" data-id="'+esc(x.e.id)+'"><span class="badge">'+esc(initials(x.e.name))+'</span><span class="grow"><b>'+esc(x.e.name)+'</b><span class="sub">'+esc([m.p.join(', '),m.s.join(', '),x.e.equip].filter(Boolean).join(' · '))+'</span></span><span class="pill '+(x.lab==='Same muscles'||x.lab==='Same type'?'ok':x.lab==='Close match'?'hi':'no')+'">'+x.lab+'</span></button>'}).join('');
-  return '<div class="scrim" data-act="scrim"><div class="panel pad" role="dialog" aria-modal="true"><h3>Replace '+esc(d.name)+'</h3><div class="sub" style="margin:2px 0 8px">Machine taken? These work the same muscles. Your sets and reps carry over.</div>'+(rows||'<p class="sub">No close matches. Browse all exercises instead.</p>')+'<button class="btn sec block" style="margin-top:10px" data-act="swap-browse">Browse all exercises</button></div></div>';
+  var ex=S.active&&S.active.exercises[o.exi];if(!ex)return '';var d=exOf(ex.ex);
+  return '<section class="sheet '+z+'"><header class="sh"><button class="ib" data-act="ov-close" aria-label="Close">'+I.x+'</button><h2 class="ell">Replace '+esc(d.name)+'</h2><span style="width:40px"></span></header><div class="sb" data-scroll="ov'+i+'"><p class="sub" style="margin:0 2px 12px">Tap an exercise to swap it in. Your sets carry over.</p><label class="search">'+I.search+'<input id="swapq" data-in="swapq" type="search" placeholder="Search all exercises" value="'+esc(o.q||'')+'" autocomplete="off"></label><button class="btn sec block" style="margin-bottom:4px" data-act="swap-new">'+I.plusS+' Create new exercise</button><div id="swap-body">'+swapBody(o)+'</div></div></section>';
 }
 function doSwap(exi,newId){
   var ex=S.active.exercises[exi];if(!ex)return;var oldT=exOf(ex.ex).type,nt=exOf(newId).type,oldName=exOf(ex.ex).name;
@@ -1594,12 +1615,15 @@ function act(a,d,t,e){
     case 'nx-sec':t.setAttribute('aria-pressed',t.getAttribute('aria-pressed')==='true'?'false':'true');break;
     case 'save-ex':{
       var nm=($('#nx-name').value||'').trim();if(!nm){toast('Give the exercise a name');break}
-      var pm=$('#nx-muscle').value;
+      var pm=$('#nx-muscle').value,onx=S.ov[S.ov.length-1]||{};
+      var fsec=$$('#nx-sec [aria-pressed="true"]').map(function(b){return b.dataset.m}).filter(function(m){return m!==pm});
+      if(onx.edit){var ce=S.profile.customEx.filter(function(x){return x.id===onx.edit})[0];if(!ce){S.ov.pop();render();break}
+        ce.name=nm;ce.muscle=pm;ce.equip=$('#nx-equip').value;ce.type=$('#nx-type').value;ce.sec=fsec;saveProfile();S.ov.pop();render();toast('Exercise updated');break}
       var ne={id:'c_'+uid(),name:nm,muscle:pm,equip:$('#nx-equip').value,type:$('#nx-type').value,sec:$$('#nx-sec [aria-pressed="true"]').map(function(b){return b.dataset.m}).filter(function(m){return m!==pm})};
-      S.profile.customEx.push(ne);saveProfile();S.ov.pop();var top=S.ov[S.ov.length-1];if(top&&top.t==='pick')top.sel.push(ne.id);render();toast('Exercise created');break}
+      S.profile.customEx.push(ne);saveProfile();S.ov.pop();if(onx.replace!=null){S.ov=S.ov.filter(function(x){return x.t!=='swap'});doSwap(onx.replace,ne.id);render();break}var top=S.ov[S.ov.length-1];if(top&&top.t==='pick')top.sel.push(ne.id);render();toast('Exercise created');break}
     case 'exopen':pushOv({t:'exdetail',id:d.id});break;
     case 'metric':S.ov[S.ov.length-1].metric=d.id;render();break;
-    case 'ex-custom-del':S.profile.customEx=S.profile.customEx.filter(function(x){return x.id!==d.id});saveProfile();S.ov.pop();render();break;
+    case 'ex-custom-del-ask':{var cu=sessionsOf(d.id).length;pushOv({t:'confirm',title:'Delete '+exOf(d.id).name+'?',body:cu?'It’s in '+cu+' logged workout'+(cu===1?'':'s')+'. Those sets stay in your history but will show as “Removed exercise”. To fix a detail, edit it instead.':'It will be removed from your exercise list.',ok:'Delete',danger:true,go:'del-custom',id:d.id});break}
     case 'ov-close':popOv();break;
     case 'scrim':if(e.target===t)popOv();break;
     case 'confirm-ok':{var o4=S.ov[S.ov.length-1];S.ov.pop();
@@ -1607,6 +1631,7 @@ function act(a,d,t,e){
       else if(o4.go==='finish-go'){finishGo();return}
       else if(o4.go==='del-routine'){var rix=S.profile.routines.findIndex(function(x){return x.id===o4.id}),rsv=S.profile.routines[rix];S.profile.routines=S.profile.routines.filter(function(x){return x.id!==o4.id});saveProfile();if(S.active&&S.active.kind==='routine'){S.active=null;S.sheetOpen=false}if(rsv)showUndo('Routine “'+rsv.name+'” deleted',function(){S.profile.routines.splice(rix,0,rsv);saveProfile()})}
       else if(o4.go==='del-workout'){var wsv=S.workouts.filter(function(x){return x.id===o4.id})[0];deleteWorkout(o4.id);recalcAll();saveWorkouts();S.ov=[];if(wsv)showUndo('Workout “'+wsv.name+'” deleted',function(){saveWorkout(wsv);recalcAll();saveWorkouts()})}
+      else if(o4.go==='del-custom'){var cix=S.profile.customEx.findIndex(function(x){return x.id===o4.id}),csv=S.profile.customEx[cix];S.profile.customEx.splice(cix,1);saveProfile();S.ov=S.ov.filter(function(x){return !((x.t==='newex'&&x.edit===o4.id)||(x.t==='exdetail'&&x.id===o4.id))});if(csv)showUndo(csv.name+' deleted',function(){S.profile.customEx.splice(cix,0,csv);saveProfile()})}
       else if(o4.go==='del-goal'){var gi=S.profile.goals.items.findIndex(function(x){return x.id===o4.id}),gsv=S.profile.goals.items[gi];S.profile.goals.items.splice(gi,1);saveProfile();if(gsv)showUndo('Goal deleted',function(){S.profile.goals.items.splice(gi,0,gsv);saveProfile()})}
       else if(o4.go==='restore-snap'){restoreData(o4.data);S.ov=[];lsSet('onboarded',1)}
       else if(o4.go==='del-body'){var bsv=S.body.filter(function(x){return x.id===o4.id})[0];S.body=S.body.filter(function(x){return x.id!==o4.id});saveBody();if(bsv)showUndo('Entry deleted',function(){S.body.push(bsv);saveBody()})}
@@ -1659,9 +1684,11 @@ function act(a,d,t,e){
     case 'note-edit':{if(S.ov.length&&S.ov[S.ov.length-1].t==='exmenu')S.ov.pop();pushOv({t:'note',id:d.id});setTimeout(function(){var f=$('#sn-text');if(f)f.focus()},60);break}
     case 'note-save':{var on2=S.ov[S.ov.length-1],tx=($('#sn-text').value||'').trim();if(tx)S.profile.exNotes[on2.id]=tx;else delete S.profile.exNotes[on2.id];saveProfile();S.ov.pop();render();break}
     case 'note-del':{var on3=S.ov[S.ov.length-1],old=S.profile.exNotes[on3.id];delete S.profile.exNotes[on3.id];saveProfile();S.ov.pop();render();showUndo('Note deleted',function(){S.profile.exNotes[on3.id]=old;saveProfile()});break}
-    case 'swap-open':{var sxi=S.ov[S.ov.length-1].exi;S.ov.pop();pushOv({t:'swap',exi:sxi});break}
-    case 'swap-to':{var osw=S.ov[S.ov.length-1];S.ov.pop();doSwap(osw.exi,d.id);render();break}
-    case 'swap-browse':{var osb=S.ov[S.ov.length-1];pushOv({t:'pick',sel:[],q:'',m:'All',replace:osb.exi});break}
+    case 'swap-open':{var sxi=S.ov[S.ov.length-1].exi;S.ov.pop();pushOv({t:'swap',exi:sxi,q:'',m:'All'});break}
+    case 'swap-to':{var osw=S.ov.filter(function(x){return x.t==='swap'})[0];if(!osw)break;S.ov=S.ov.filter(function(x){return x.t!=='swap'});doSwap(osw.exi,d.id);render();break}
+    case 'swapm':{var osm=S.ov[S.ov.length-1];osm.m=d.m;refreshSwap();break}
+    case 'swap-new':{var osn=S.ov[S.ov.length-1];pushOv({t:'newex',replace:osn.exi,name:(osn.q||'').trim()});break}
+    case 'ex-edit':{if(S.ov.length&&S.ov[S.ov.length-1].t==='exmenu')S.ov.pop();pushOv({t:'newex',edit:d.id});break}
     case 'kp-open':{var ke=A&&A.exercises[+d.exi];if(!ke)break;if(A.sw&&A.sw.eid===ke.id&&A.sw.si===+d.si)break;kpOpen(+d.exi,+d.si,d.f);break}
     case 'kp-key':kpKey(d.k);break;
     case 'kp-next':kpMove(false);break;
@@ -2063,6 +2090,7 @@ function bind(){
   document.addEventListener('input',function(e){
     var t=e.target,k=t.dataset&&t.dataset.in;if(!k)return;var A=S.active;
     if(k==='exq'){S.exq=t.value;var b=$('#ex-body');if(b)b.innerHTML=exBody();return}
+    if(k==='swapq'){var osq=S.ov[S.ov.length-1];if(osq&&osq.t==='swap'){osq.q=t.value;refreshSwap()}return}
     if(k==='pickq'){var o=S.ov[S.ov.length-1];if(o){o.q=t.value;refreshPick()}return}
     if(k==='avol'){S.profile.alarm.vol=+t.value;var l=$('#vol-l');if(l)l.textContent=t.value+'%';return}
     if(!A)return;

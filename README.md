@@ -21,7 +21,8 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 - **Estimated finish time**, based on your own pace
 - Personal records for heaviest weight, estimated 1RM and set volume
 - **Built-in number pad** for weights, reps and times, with ±2.5 buttons, a plate calculator shortcut and **Log set** (can be turned off in Settings)
-- **Replace exercise** suggests alternatives that work the same muscles, keeping your sets
+- **Replace exercise** opens a full list with the best matches first, search, muscle filters and a Create new exercise button. Your sets carry over.
+- **Edit your own exercises** (name, muscles, equipment, logging type) from the exercise page or the ••• menu in a workout
 - **Sticky notes** per exercise (seat height, grip) that show every time you do it
 - **Edit past workouts**: change sets, names, start time and duration after the fact
 - **Undo** after deleting a set, exercise, workout, routine, folder, goal or body entry
