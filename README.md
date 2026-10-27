@@ -18,7 +18,7 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 - **Hold and drag** an exercise name to reorder exercises in a workout or routine
 - Rest timer with a **separate time per exercise**, adjustable while it runs
 - **Stopwatch for timed sets** such as planks or runs. Tap to start, tap to stop, and the time is filled in and the set logged. You can still type times by hand.
-- **Estimated finish time**, based on your own pace
+- **Estimated finish time** from your own pace per set plus each exercise's rest time. Supersets rest once per round, and the estimate updates as you log sets.
 - Personal records for heaviest weight, estimated 1RM and set volume
 - **Built-in number pad** for weights, reps and times, with ±2.5 buttons, a plate calculator shortcut and **Log set** (can be turned off in Settings)
 - **Replace exercise** opens a full list with the best matches first, search, muscle filters and a Create new exercise button. Your sets carry over.

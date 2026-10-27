@@ -567,15 +567,48 @@ function autoWarm(ex){
 }
 /* time estimate */
 function histPace(){var h=S.workouts.filter(function(w){return w.sets>0&&w.dur>0}).slice(0,6).map(function(w){return w.dur/w.sets});return h.length?median(h):(S.profile.rest||90)+45}
+var SS_GAP=15;
+/* rest that follows a set: none (just the walk over) inside a superset, the exercise's rest otherwise, half for warm-ups */
+function restAfter(list,i,st){var ss=ssInfo(list,i);if(ss&&!ss.last)return SS_GAP;var r=restFor(list[i].ex);return st&&st.t==='w'?Math.round(r*0.5):r}
+/* seconds of work per set seen in one workout: time between ticks minus the rest that was due */
+function workObs(w,live){
+  var t=[];w.exercises.forEach(function(e,i){e.sets.forEach(function(st){if(st.at&&(!live||st.done))t.push({at:st.at,i:i,s:st})})});
+  t.sort(function(x,y){return x.at-y.at});var out=[];
+  for(var k=1;k<t.length;k++){var d=(t[k].at-t[k-1].at)/1000;if(d<5||d>900)continue;var wk=d-restAfter(w.exercises,t[k-1].i,t[k-1].s);if(wk>=8&&wk<=300)out.push(wk)}
+  return out;
+}
+function workPace(){
+  var hist=[];S.workouts.slice(0,8).forEach(function(w){hist=hist.concat(workObs(w,false))});
+  var hw=hist.length>=4?median(hist):Math.min(120,Math.max(30,histPace()-(S.profile.rest||90)));
+  var cur=S.active&&S.active.kind==='workout'?workObs(S.active,true):[];
+  var k=Math.min(cur.length/6,1);return cur.length?k*median(cur)+(1-k)*hw:hw;
+}
+/* time for a list of exercises: work + rest per set; a superset rests once per round */
+function planSecs(list,W,rem){
+  var tot=0,last=null,i=0;
+  while(i<list.length){
+    var j=i,e=list[i];if(e.ss){while(j<list.length-1&&list[j+1].ss===e.ss)j++}
+    var left=list.slice(i,j+1).map(function(x){return (x.sets||[]).filter(function(st){return !rem||!st.done})});
+    if(j>i){
+      var n=left.map(function(l){return l.length}),cnt=n.reduce(function(x,y){return x+y},0),rounds=Math.max.apply(null,n),rr=restFor(list[j].ex);
+      if(cnt){tot+=cnt*W+(cnt-rounds)*SS_GAP+rounds*rr;last=rr}
+    }else left[0].forEach(function(st){var r=restAfter(list,i,st);tot+=W+r;last=r});
+    i=j+1;
+  }
+  if(last!=null)tot-=last;return tot;
+}
 function estimate(){
-  var a=S.active,ticks=[],left=0;
-  a.exercises.forEach(function(e){e.sets.forEach(function(s){if(s.done){if(s.at)ticks.push(s.at)}else left++})});
-  ticks.sort(function(x,y){return x-y});
-  var iv=[];for(var i=1;i<ticks.length;i++){var d=(ticks[i]-ticks[i-1])/1000;if(d>=10&&d<=900)iv.push(d)}
-  var hp=histPace(),k=Math.min(iv.length/6,1),pace=iv.length?k*median(iv)+(1-k)*hp:hp;
-  var now=Date.now(),base=ticks.length?ticks[ticks.length-1]:a.start;
-  var fin=left?Math.max(base+left*pace*1000,now+(left-0.5)*pace*1000):now;
-  return {left:left,fin:fin,secs:Math.max(0,(fin-now)/1000)};
+  var a=S.active,left=0,lt=null,now=Date.now();
+  a.exercises.forEach(function(e,i){e.sets.forEach(function(st){if(st.done){if(st.at&&(!lt||st.at>lt.at))lt={at:st.at,i:i,s:st}}else left++})});
+  if(!left)return {left:0,fin:now,secs:0};
+  var W=workPace(),secs=planSecs(a.exercises,W,true);
+  if(S.rest&&S.rest.end>now)secs+=(S.rest.end-now)/1000;
+  else{ // part-way through a set: count the time already spent on it
+    var from=lt?lt.at+restAfter(a.exercises,lt.i,lt.s)*1000:a.start;
+    secs-=Math.min(Math.max(0,(now-from)/1000),W*0.8);
+  }
+  secs=Math.max(secs,30);
+  return {left:left,fin:now+secs*1000,secs:secs};
 }
 function estText(){
   if(!S.active||S.active.kind!=='workout')return '';
@@ -1113,14 +1146,14 @@ function folderList(){return S.profile.folders||[]}
 function routineCard(r,hp){
   var sets=r.exercises.reduce(function(n,e){return n+e.sets.length},0);
   var names=r.exercises.slice(0,4).map(function(e){return exOf(e.ex).name}).join(', ')+(r.exercises.length>4?'…':'');
-  return '<div class="card rt"><div class="row"><h3 class="grow ell">'+esc(r.name)+'</h3><button class="ib" data-act="routine-menu" data-id="'+r.id+'" aria-label="Routine options">'+I.more+'</button></div><div class="meta">'+r.exercises.length+' exercises · '+sets+' sets · about '+fmtShort(Math.max(60,sets*hp))+'</div><div class="names ell" style="margin:0 0 12px">'+esc(names)+'</div><button class="btn sec block" data-act="start-routine" data-id="'+r.id+'">Start routine</button></div>';
+  return '<div class="card rt"><div class="row"><h3 class="grow ell">'+esc(r.name)+'</h3><button class="ib" data-act="routine-menu" data-id="'+r.id+'" aria-label="Routine options">'+I.more+'</button></div><div class="meta">'+r.exercises.length+' exercises · '+sets+' sets · about '+fmtShort(Math.max(60,planSecs(r.exercises,hp,false)))+'</div><div class="names ell" style="margin:0 0 12px">'+esc(names)+'</div><button class="btn sec block" data-act="start-routine" data-id="'+r.id+'">Start routine</button></div>';
 }
 function routineRow(r,hp){
   var sets=r.exercises.reduce(function(n,e){return n+e.sets.length},0);
-  return '<div class="fr"><div class="grow" style="min-width:0"><b class="ell" style="display:block">'+esc(r.name)+'</b><span class="sub">'+r.exercises.length+' exercises · about '+fmtShort(Math.max(60,sets*hp))+'</span></div><button class="ib" data-act="routine-menu" data-id="'+r.id+'" aria-label="Routine options">'+I.more+'</button><button class="btn sm sec" data-act="start-routine" data-id="'+r.id+'">Start</button></div>';
+  return '<div class="fr"><div class="grow" style="min-width:0"><b class="ell" style="display:block">'+esc(r.name)+'</b><span class="sub">'+r.exercises.length+' exercises · about '+fmtShort(Math.max(60,planSecs(r.exercises,hp,false)))+'</span></div><button class="ib" data-act="routine-menu" data-id="'+r.id+'" aria-label="Routine options">'+I.more+'</button><button class="btn sm sec" data-act="start-routine" data-id="'+r.id+'">Start</button></div>';
 }
 function routinesHtml(){
-  var hp=histPace(),fs=folderList(),h='';
+  var hp=workPace(),fs=folderList(),h='';
   var ids=fs.map(function(f){return f.id});
   fs.forEach(function(f){
     var rs=S.profile.routines.filter(function(r){return r.folder===f.id});
@@ -1185,12 +1218,12 @@ function templatesView(o,z,i){
   return h+'</div></section>';
 }
 function templateView(o,z,i){
-  var pg=PROGRAMS.filter(function(x){return x.id===o.id})[0],hp=histPace();
+  var pg=PROGRAMS.filter(function(x){return x.id===o.id})[0],hp=workPace();
   var h='<section class="sheet '+z+'"><header class="sh"><button class="ib" data-act="ov-close" aria-label="Back">'+I.left+'</button><h2 class="ell">'+esc(pg.name)+'</h2><span style="width:40px"></span></header><div class="sb" data-scroll="ov'+i+'">'+
     '<div class="tags" style="margin-top:0"><span class="tag">'+esc(pg.days)+'</span><span class="tag">'+esc(pg.level)+'</span><span class="tag">'+esc(pg.goal)+'</span></div><p style="margin:6px 0">'+esc(pg.about)+'</p><p class="sub" style="margin:0 0 14px">Suggested week: '+esc(pg.schedule)+'</p>';
   pg.routines.forEach(function(r){
     var sets=r.ex.reduce(function(m,e){return m+e.sets.length},0);
-    h+='<div class="card tday"><div class="row"><h3 class="grow">'+esc(r.name)+'</h3><span class="sub">'+sets+' sets · about '+fmtShort(Math.max(60,sets*hp))+'</span></div><div class="tex">'+r.ex.map(function(e){return '<span>'+tplSetsText(e)+'</span><span>'+esc(exOf(e.ex).name)+'</span>'}).join('')+'</div></div>';
+    h+='<div class="card tday"><div class="row"><h3 class="grow">'+esc(r.name)+'</h3><span class="sub">'+sets+' sets · about '+fmtShort(Math.max(60,planSecs(r.ex,hp,false)))+'</span></div><div class="tex">'+r.ex.map(function(e){return '<span>'+tplSetsText(e)+'</span><span>'+esc(exOf(e.ex).name)+'</span>'}).join('')+'</div></div>';
   });
   h+='<button class="btn block" style="margin-top:4px" data-act="tpl-add" data-id="'+pg.id+'">'+I.plusS+' Add to my routines</button><p class="sub" style="margin:10px 2px 0">Weights start empty. Your first session fills them in, and after that the Previous column shows what you lifted.</p>';
   return h+'</div></section>';
