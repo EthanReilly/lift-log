@@ -313,11 +313,14 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .kpt{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin-bottom:8px;min-width:0}.kpt b{color:var(--fg)}
 .kpt button{padding:7px 12px;border-radius:10px;background:var(--surface2);font-weight:700;color:var(--fg);flex:none;display:inline-flex;align-items:center;gap:4px}
 .kpt .log{background:var(--ok);color:#fff}
-.kpk{display:grid;grid-template-columns:repeat(3,1fr) 1.15fr;gap:7px}
-.kpk button{height:50px;border-radius:12px;background:var(--surface2);font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
+.kpk{display:grid;grid-template-columns:repeat(3,1fr) 1.15fr;gap:0;margin:0 -4px;touch-action:manipulation;-webkit-user-select:none;user-select:none}
+.kpk button{height:62px;border:4px solid transparent;background-clip:padding-box;border-radius:15px;touch-action:manipulation;-webkit-tap-highlight-color:transparent;transition:background-color .08s,transform .08s;background-color:var(--surface2);font-size:21px;font-weight:700;font-variant-numeric:tabular-nums}
 .kpk button[disabled]{opacity:.3}
-.kpk .s{font-size:15px;color:var(--accent);background:var(--accent-soft)}
-.kpk .go{background:var(--accent);color:var(--accent-ink);font-size:16px}
+.kpk button.pr,.kpk button:active{background-color:var(--line);transform:scale(.96)}
+.kpk .go.pr,.kpk .go:active{background-color:var(--accent);filter:brightness(1.15)}
+.kpt{touch-action:manipulation}.kpt button{min-height:40px}
+.kpk .s{font-size:15px;color:var(--accent);background-color:var(--accent-soft)}
+.kpk .go{background-color:var(--accent);color:var(--accent-ink);font-size:16px}
 .altr{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 4px;border-top:1px solid var(--line)}
 .altr:first-of-type{border-top:0}.altr .grow b{display:block}.altr .sub{font-size:12px}
 .goal{display:block;width:100%;text-align:left;padding:12px 0;border-top:1px solid var(--line)}.goal:first-child{border-top:0}
@@ -525,6 +528,20 @@ function totals(w,onlyDone){var v=0,n=0;w.exercises.forEach(function(ex){var ty=
 function sessionsOf(exId,beforeStart,exceptId){var out=[];S.workouts.forEach(function(w){if(w.id===exceptId)return;if(beforeStart!=null&&w.start>=beforeStart)return;w.exercises.forEach(function(e){if(e.ex===exId)out.push({w:w,sets:e.sets})})});return out}
 var prevCache=null;
 function lastSets(exId){if(prevCache&&prevCache[exId])return prevCache[exId];var s=sessionsOf(exId,null,S.active&&S.active.id);var r=s.length?s[0].sets:[];if(prevCache)prevCache[exId]=r;return r}
+function setKind(s){return s&&s.t==='w'?'w':'n'}
+function matchSet(prev,sets,si){var k=setKind(sets[si]),n=0;for(var i=0;i<si;i++)if(setKind(sets[i])===k)n++;for(var j=0;j<prev.length;j++)if(setKind(prev[j])===k){if(!n)return prev[j];n--}return null}
+function prevOf(ex,si){return matchSet(lastSets(ex.ex),ex.sets,si)}
+/* a new workout copies last session's set layout (warm-ups, working, drop, failure); routine values fill in where they match */
+function setsFromLast(exId,tplSets){
+  var ss=sessionsOf(exId),last=ss.length?ss[0].sets:[],tpl=tplSets||[];
+  if(!last.length)return tpl.map(function(x){var o={t:x.t||'n',w:x.w==null?null:x.w,r:x.r==null?null:x.r,done:false};if(o.t!=='n')o.tManual=true;return o});
+  var out=[],n=Math.max(last.length,tpl.length);
+  for(var i=0;i<n;i++){var src=i<last.length?last[i]:tpl[i],o={t:src.t||'n',w:null,r:null,done:false};
+    if(i>=last.length&&o.t!=='n')o.tManual=true;else if(o.t==='w')o.tAuto=true;else if(o.t!=='n')o.tManual=true;
+    out.push(o)}
+  out.forEach(function(o,i){var m=matchSet(tpl,out,i);if(m){if(m.w!=null)o.w=m.w;if(m.r!=null)o.r=m.r}});
+  return out;
+}
 function fmtSet(s,ty){if(!s)return '–';if(ty==='wr')return fmtW(s.w||0)+' × '+(s.r||0);if(ty==='dur')return fmtMS(s.r||0);return String(s.r||0)}
 function bestSet(sets,ty){var b=null,bs=-1;sets.forEach(function(s){if(!isWork(s))return;var sc=ty==='wr'?(e1rm(s)||s.w||0):(s.r||0);if(sc>bs){bs=sc;b=s}});return b}
 function setLabel(s,n){return s.t==='w'?'W':s.t==='d'?'D':s.t==='f'?'F':String(n)}
@@ -907,7 +924,7 @@ function exCard(ex,exi,isW){
    '<div class="srow h" style="grid-template-columns:'+cols+'"><span>SET</span>'+(isW?'<span>PREVIOUS</span>':'')+(ty==='wr'?'<span>'+unit+'</span><span>REPS</span>':ty==='dur'?'<span>TIME</span>':'<span>REPS</span>')+(swc?'<span>TIMER</span>':'')+(rpe?'<span>RPE</span>':'')+(isW?'<span>'+I.checkS+'</span>':'')+'</div>';
   var n=0;
   ex.sets.forEach(function(s,si){
-    if(s.t!=='w')n++;var lab=setLabel(s,n),p=prev[si],tgS=!!(tg&&s.t!=='w'&&!s.done);
+    if(s.t!=='w')n++;var lab=setLabel(s,n),p=isW?matchSet(prev,ex.sets,si):null,tgS=!!(tg&&s.t==='n'&&!s.done);
     h+='<div class="srow'+(s.done?' done':'')+'" style="grid-template-columns:'+cols+'"><button class="sn '+(s.t==='n'?'':s.t)+'" data-act="set-menu" data-exi="'+exi+'" data-si="'+si+'" aria-label="Set '+(si+1)+' type">'+lab+'</button>';
     if(isW)h+=p?'<button class="pv" data-act="fill-prev" data-exi="'+exi+'" data-si="'+si+'" aria-label="Use previous values">'+esc(fmtSet(p,ty))+'</button>':'<span class="pv">–</span>';
     if(ty==='wr'){
@@ -1485,7 +1502,7 @@ function syncNotif(){
   if(!NATIVE)return;var A=liveW();
   if(!A||!S.profile.lockControls){if(notifKey){notifKey='';nat('clearWorkoutNotif')}return}
   var nx=nextSetInfo(A),title,text,u=S.profile.unit;
-  if(nx){var d=exOf(nx.ex.ex),ty=d.type,p=lastSets(nx.ex.ex)[nx.si],tg=nx.set.t!=='w'?overloadTarget(nx.ex):null;
+  if(nx){var d=exOf(nx.ex.ex),ty=d.type,p=prevOf(nx.ex,nx.si),tg=nx.set.t==='n'?overloadTarget(nx.ex):null;
     var w=nx.set.w!=null?nx.set.w:(tg?tg.w:(p?p.w:null)),r=nx.set.r!=null?nx.set.r:(tg&&tg.r?tg.r:(p?p.r:null));
     title=d.name+' · set '+(nx.si+1)+' of '+nx.ex.sets.length;
     text=ty==='wr'?(w!=null&&r!=null?'Next: '+fmtW(w)+' '+u+' × '+r:'Next: enter weight and reps'):ty==='dur'?'Next: '+(r?fmtMS(r):'timed set'):'Next: '+(r?r+' reps':'enter reps');
@@ -1597,10 +1614,10 @@ function swStop(markDone){
 function startWorkout(tpl){
   if(S.active){toast('Finish or discard your current workout first');S.tab='workout';S.sheetOpen=S.active.kind==='workout';render();return}
   var now=Date.now();
-  S.active={kind:'workout',id:uid(),name:tpl&&tpl.name||greet(now),start:now,note:'',exercises:((tpl&&tpl.exercises)||[]).map(function(e){var trm=0;e.sets.forEach(function(x){if(x.t!=='w'&&x.r)trm=Math.max(trm,x.r)});return {id:uid(),ex:e.ex,ss:e.ss,tr:trm||undefined,note:'',sets:e.sets.map(function(s){var o={t:s.t||'n',w:s.w==null?null:s.w,r:s.r==null?null:s.r,done:false};if(o.t!=='n')o.tManual=true;return o})}})};
+  S.active={kind:'workout',id:uid(),name:tpl&&tpl.name||greet(now),start:now,note:'',exercises:((tpl&&tpl.exercises)||[]).map(function(e){var trm=0;e.sets.forEach(function(x){if(x.t!=='w'&&x.r)trm=Math.max(trm,x.r)});return {id:uid(),ex:e.ex,ss:e.ss,tr:trm||undefined,note:'',sets:setsFromLast(e.ex,e.sets)}})};
   S.sheetOpen=true;saveActiveSoon();render();
 }
-function newExEntry(id,isW){return {id:uid(),ex:id,note:'',sets:(isW?[1]:[1,2,3]).map(function(){return {t:'n',w:null,r:null,done:false}})}}
+function newExEntry(id,isW){var ls=isW?setsFromLast(id,[{t:'n'}]):null;return {id:uid(),ex:id,note:'',sets:ls||[1,2,3].map(function(){return {t:'n',w:null,r:null,done:false}})}}
 function finishGo(){
   var a=S.active,now=Date.now();
   a.exercises.forEach(function(e){autoWarm(e)});
@@ -1677,7 +1694,7 @@ function act(a,d,t,e){
     case 'ex-menu':pushOv({t:'exmenu',exi:+d.exi});break;
     case 'ex-up':case 'ex-down':{var o7=S.ov[S.ov.length-1],i=o7.exi,j=a==='ex-up'?i-1:i+1,arr=A.exercises,tmp=arr[i];arr[i]=arr[j];arr[j]=tmp;S.ov.pop();saveActiveSoon();render();break}
     case 'ex-del':{var o8=S.ov[S.ov.length-1],e8=A.exercises[o8.exi],A8=A;A.exercises.splice(o8.exi,1);S.kp=null;S.ov.pop();saveActiveSoon();render();showUndo(exOf(e8.ex).name+' removed',function(){if(S.active===A8){A8.exercises.splice(Math.min(o8.exi,A8.exercises.length),0,e8);saveActiveSoon()}});break}
-    case 'fill-prev':{var ex9=A.exercises[+d.exi],s9=ex9.sets[+d.si],p9=lastSets(ex9.ex)[+d.si];if(p9){if(p9.w!=null)s9.w=p9.w;if(p9.r!=null)s9.r=p9.r;saveActiveSoon();render()}break}
+    case 'fill-prev':{var ex9=A.exercises[+d.exi],s9=ex9.sets[+d.si],p9=prevOf(ex9,+d.si);if(p9){if(p9.w!=null)s9.w=p9.w;if(p9.r!=null)s9.r=p9.r;saveActiveSoon();render()}break}
     case 'sw-start':{
       var exs=A.exercises[+d.exi];if(!exs)break;
       if(A.sw)swStop(false);
@@ -1686,8 +1703,8 @@ function act(a,d,t,e){
     case 'done':{
       var exd=A.exercises[+d.exi],sd=exd.sets[+d.si],ty=exOf(exd.ex).type;
       if(!sd.done){
-        var tgd=ty==='wr'&&sd.t!=='w'?overloadTarget(exd):null;if(tgd){if(sd.w==null)sd.w=tgd.w;if(sd.r==null&&tgd.r)sd.r=tgd.r}
-        var pv=lastSets(exd.ex)[+d.si]||(+d.si>0?exd.sets[+d.si-1]:null);
+        var tgd=ty==='wr'&&sd.t==='n'?overloadTarget(exd):null;if(tgd){if(sd.w==null)sd.w=tgd.w;if(sd.r==null&&tgd.r)sd.r=tgd.r}
+        var pv=prevOf(exd,+d.si)||(+d.si>0?exd.sets[+d.si-1]:null);
         if(sd.w==null&&ty==='wr'&&pv&&pv.w!=null)sd.w=pv.w;
         if(sd.r==null&&pv&&pv.r!=null)sd.r=pv.r;
         if(!(sd.r>0)){toast(ty==='dur'?'Enter a time first':'Enter reps first');break}
@@ -2119,7 +2136,17 @@ function bindDrag(){
 /* ---------- events ---------- */
 function bind(){
   bindDrag();
-  document.addEventListener('click',function(e){var t=e.target.closest('[data-act]');if(!t)return;act(t.dataset.act,t.dataset,t,e)});
+  var kpDown=0;
+  document.addEventListener('pointerdown',function(e){
+    var b=e.target.closest('.kpk [data-act="kp-key"]');if(!b||b.disabled||e.button>0)return;
+    e.preventDefault();kpDown=Date.now();b.classList.add('pr');setTimeout(function(){b.classList.remove('pr')},120);
+    try{if(NATIVE&&navigator.vibrate)navigator.vibrate(8)}catch(x){}
+    kpKey(b.dataset.k);
+  });
+  document.addEventListener('click',function(e){
+    var t=e.target.closest('[data-act]');if(!t)return;
+    if(t.dataset.act==='kp-key'&&e.detail!==0&&Date.now()-kpDown<1500)return;
+    act(t.dataset.act,t.dataset,t,e)});
   document.addEventListener('input',function(e){
     var t=e.target,k=t.dataset&&t.dataset.in;if(!k)return;var A=S.active;
     if(k==='exq'){S.exq=t.value;var b=$('#ex-body');if(b)b.innerHTML=exBody();return}
