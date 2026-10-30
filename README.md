@@ -53,6 +53,7 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 - **Weekly automatic backups** to a folder you choose, such as OneDrive, even when the app is closed. The last 8 are kept.
 - **Lock-screen controls**: a notification with the current set, a rest countdown and **Done set**, **+15 s** and **Skip rest** buttons
 - Share workout images straight to other apps
+- **Do Not Disturb button** beside the workout timer. It silences notifications for the workout and turns Do Not Disturb back off when you finish or discard, unless it was already on before. Calls and messages you allow in your own Do Not Disturb settings, alarms and music still come through. The first time, Android asks you to allow Lift Log in the Do Not Disturb access list.
 - Keeps the screen on during workouts, and the back button closes screens instead of quitting
 
 ## Your data

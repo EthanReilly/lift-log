@@ -294,6 +294,9 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .dragghost{position:fixed;left:16px;right:16px;z-index:95;pointer-events:none;display:flex;align-items:center;gap:10px;padding:14px 16px;border-radius:16px;background:var(--surface);border:2px solid var(--accent);box-shadow:0 14px 36px rgba(0,0,0,.45);transform:scale(1.04);transition:transform .12s}
 .dragghost b{flex:1;min-width:0;color:var(--accent);font-size:17px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dragghost span{color:var(--muted);font-size:13px;font-weight:600}
+header.sh .ib.dnd{width:36px;height:36px;margin-left:2px}
+header.sh .ib.dnd.on{background:var(--accent);color:var(--accent-ink)}
+header.sh .ib.dnd.on .ic{fill:currentColor}
 #undo{position:fixed;left:50%;transform:translateX(-50%);width:calc(100% - 24px);max-width:536px;bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:96;display:flex;align-items:center;gap:12px;padding:13px 16px;border-radius:14px;background:var(--fg);color:var(--bg);font-weight:600;box-shadow:0 10px 30px rgba(0,0,0,.35)}
 #undo span{flex:1;min-width:0}
 #undo button{color:var(--accent);font-weight:800;letter-spacing:.06em;padding:4px 6px}
@@ -399,6 +402,7 @@ var I={
   pin:ic('<path d="M9 4h6l-1 5 3 3H7l3-3z"/><path d="M12 12v8"/>'),
   upS:ic('<path d="M12 19V5M6 11l6-6 6 6"/>','sm'),
   share:ic('<path d="M12 15V3M7 8l5-5 5 5"/><path d="M5 13v6a2 2 0 002 2h10a2 2 0 002-2v-6"/>'),
+  moon:ic('<path d="M20 14.5A8 8 0 019.5 4a8 8 0 1010.5 10.5z"/>'),
   prev:ic('<path d="M18 6l-9 6 9 6z" fill="currentColor"/><path d="M6 6v12"/>')
 };
 function toUnit(kg){return kg==null?null:(S.profile.unit==='kg'?kg:kg*KG)}
@@ -493,7 +497,7 @@ function snapshotSoon(){if(NATIVE)debounce('snap',1500,function(){nat('saveSnaps
 function saveProfile(){debounce('prof',350,function(){lsSet('profile',profileData());snapshotSoon()})}
 function saveActiveSoon(){if(!S.active||S.active.kind!=='workout')return;debounce('active',600,flushActive)}
 function flushActive(){var a=S.active&&S.active.kind==='workout'?clean(S.active):null;if(a)lsSet('active',a);else lsDel('active')}
-function clearActive(){S.active=null;S.sheetOpen=false;S.kp=null;stopRest();clearTimeout(timers.active);flushActive()}
+function clearActive(){if(NATIVE&&S.active&&S.active.dnd)nat('setDnd',{on:false});S.active=null;S.sheetOpen=false;S.kp=null;stopRest();clearTimeout(timers.active);flushActive()}
 function sortW(){S.workouts.sort(function(a,b){return b.start-a.start})}
 function saveWorkouts(){lsSet('workouts',S.workouts);snapshotSoon()}
 function saveWorkout(w){var i=S.workouts.findIndex(function(x){return x.id===w.id});if(i>-1)S.workouts[i]=w;else S.workouts.push(w);sortW();saveWorkouts()}
@@ -508,6 +512,7 @@ async function initStore(){
   render();
   if(NATIVE){
     S.bk=await nat('backupInfo');render();
+    if(!(S.active&&S.active.kind==='workout'&&S.active.dnd))nat('setDnd',{on:false});
     if(!S.workouts.length&&!p){
       var snap=await nat('readSnapshot');
       try{var d=snap&&snap.json?JSON.parse(snap.json):null;if(d&&d.workouts&&d.workouts.length)pushOv({t:'confirm',title:'Restore your data?',body:'Lift Log found '+d.workouts.length+' saved workout'+(d.workouts.length>1?'s':'')+' on this phone from '+fDate(d.saved||Date.now())+'.',ok:'Restore',go:'restore-snap',data:d})}catch(e){}
@@ -876,7 +881,7 @@ function sheetView(){
   if(S.kp&&!(a.exercises[S.kp.exi]&&a.exercises[S.kp.exi].sets[S.kp.si]))S.kp=null;
   var t=totals(a,true);
   var left=isW?'min-sheet':isE?'edit-cancel':'cancel-routine',title=isW?'Log workout':isE?'Edit workout':(a.rid?'Edit routine':'New routine'),right=isW?'finish':isE?'edit-save':'save-routine';
-  var h='<section class="sheet" aria-label="'+title+'"><header class="sh"><button class="ib" data-act="'+left+'" aria-label="'+(isW?'Minimise workout':'Close')+'">'+(isW?I.down:I.x)+'</button><h2>'+title+'</h2>'+(isW?'<span class="clock mono" data-elapsed>'+fmtClock((Date.now()-a.start)/1000)+'</span>':'')+'<button class="btn sm" data-act="'+right+'">'+(isW?'Finish':'Save')+'</button></header><div class="sb" data-scroll="sheet">';
+  var h='<section class="sheet" aria-label="'+title+'"><header class="sh"><button class="ib" data-act="'+left+'" aria-label="'+(isW?'Minimise workout':'Close')+'">'+(isW?I.down:I.x)+'</button><h2>'+title+'</h2>'+(isW?'<span class="clock mono" data-elapsed>'+fmtClock((Date.now()-a.start)/1000)+'</span>'+(NATIVE?'<button class="ib dnd'+(a.dnd?' on':'')+'" data-act="dnd" aria-pressed="'+!!a.dnd+'" aria-label="Do Not Disturb'+(a.dnd?' is on':'')+'">'+I.moon+'</button>':''):'')+'<button class="btn sm" data-act="'+right+'">'+(isW?'Finish':'Save')+'</button></header><div class="sb" data-scroll="sheet">';
   if(isW){
     h+='<div class="kpis"><div class="kpi"><small>Duration</small><b class="mono" data-elapsed>'+fmtClock((Date.now()-a.start)/1000)+'</b></div><div class="kpi"><small>Volume</small><b class="mono" data-stat="vol">'+fmtVol(t.vol)+'</b></div><div class="kpi"><small>Sets</small><b class="mono" data-stat="sets">'+t.sets+'</b></div></div>';
     h+='<div class="est" data-est>'+estText()+'</div>';
@@ -1678,6 +1683,7 @@ function act(a,d,t,e){
     case 'scrim':if(e.target===t)popOv();break;
     case 'confirm-ok':{var o4=S.ov[S.ov.length-1];S.ov.pop();
       if(o4.go==='discard'){clearActive()}
+      else if(o4.go==='dnd-settings'){nat('dndSettings')}
       else if(o4.go==='finish-go'){finishGo();return}
       else if(o4.go==='del-routine'){var rix=S.profile.routines.findIndex(function(x){return x.id===o4.id}),rsv=S.profile.routines[rix];S.profile.routines=S.profile.routines.filter(function(x){return x.id!==o4.id});saveProfile();if(S.active&&S.active.kind==='routine'){S.active=null;S.sheetOpen=false}if(rsv)showUndo('Routine “'+rsv.name+'” deleted',function(){S.profile.routines.splice(rix,0,rsv);saveProfile()})}
       else if(o4.go==='del-workout'){var wsv=S.workouts.filter(function(x){return x.id===o4.id})[0];deleteWorkout(o4.id);recalcAll();saveWorkouts();S.ov=[];if(wsv)showUndo('Workout “'+wsv.name+'” deleted',function(){saveWorkout(wsv);recalcAll();saveWorkouts()})}
@@ -1730,6 +1736,11 @@ function act(a,d,t,e){
     case 'pm':S.pm=d.id;render();break;
     case 'mw':S.mw=d.id;render();break;
     case 'hv':S.hv=d.id;render();break;
+    case 'dnd':{if(!NATIVE||!A||A.kind!=='workout')break;var won=!A.dnd,Ad=A;
+      nat('setDnd',{on:won}).then(function(r){if(!r)return;
+        if(r.needsAccess){S.dndPending=true;pushOv({t:'confirm',title:'Allow Do Not Disturb access',body:'Android needs you to switch Lift Log on in the Do Not Disturb access list. It is only used to silence notifications during a workout and turn them back on when you finish.',ok:'Open settings',go:'dnd-settings'});return}
+        Ad.dnd=!!r.on;saveActiveSoon();render();
+        toast(r.on?(r.already?'Do Not Disturb was already on':'Do Not Disturb on until you finish'):(r.kept?'Do Not Disturb was on before your workout, so it stays on':'Do Not Disturb off'))});break}
     case 'undo':{hideUndo();if(undoFn){var uf=undoFn;undoFn=null;uf();render();toast('Restored')}break}
     case 'note-edit':{if(S.ov.length&&S.ov[S.ov.length-1].t==='exmenu')S.ov.pop();pushOv({t:'note',id:d.id});setTimeout(function(){var f=$('#sn-text');if(f)f.focus()},60);break}
     case 'note-save':{var on2=S.ov[S.ov.length-1],tx=($('#sn-text').value||'').trim();if(tx)S.profile.exNotes[on2.id]=tx;else delete S.profile.exNotes[on2.id];saveProfile();S.ov.pop();render();break}
@@ -2198,7 +2209,9 @@ function bind(){
     syncMediaPoll();
   });
   window.addEventListener('pagehide',function(){if(S.active&&S.active.kind==='workout')flushActive()});
-  if(NATIVE&&Native.addListener){Native.addListener('back',onBack);Native.addListener('notifAction',onNotifAction)}
+  if(NATIVE&&Native.addListener){Native.addListener('back',onBack);Native.addListener('notifAction',onNotifAction);
+    Native.addListener('resume',function(){if(!S.dndPending)return;S.dndPending=false;var Ar=S.active;if(!Ar||Ar.kind!=='workout'||Ar.dnd)return;
+      nat('setDnd',{on:true}).then(function(r){if(r&&r.ok&&r.on){Ar.dnd=true;saveActiveSoon();render();toast(r.already?'Do Not Disturb was already on':'Do Not Disturb on until you finish')}})})}
 }
 if(!NATIVE&&'serviceWorker' in navigator&&location.protocol.indexOf('http')===0){navigator.serviceWorker.register('sw.js').catch(function(){})}
 root=document.getElementById('root');

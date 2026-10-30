@@ -616,6 +616,72 @@ public class LiftLogPlugin extends Plugin {
         call.resolve();
     }
 
+    /* ---------------- do not disturb during a workout ---------------- */
+
+    @PluginMethod
+    public void setDnd(PluginCall call) {
+        boolean on = Boolean.TRUE.equals(call.getBoolean("on", false));
+        Context ctx = getContext();
+        NotificationManager nm = (NotificationManager) ctx.getSystemService(Context.NOTIFICATION_SERVICE);
+        SharedPreferences sp = ctx.getSharedPreferences("liftlog", Context.MODE_PRIVATE);
+        JSObject r = new JSObject();
+        try {
+            if (!nm.isNotificationPolicyAccessGranted()) {
+                if (on) r.put("needsAccess", true);
+                else {
+                    sp.edit().putBoolean("dndOwned", false).apply();
+                    r.put("ok", true);
+                    r.put("on", false);
+                }
+                call.resolve(r);
+                return;
+            }
+            if (on) {
+                int cur = nm.getCurrentInterruptionFilter();
+                boolean wasOff = cur == NotificationManager.INTERRUPTION_FILTER_ALL || cur == NotificationManager.INTERRUPTION_FILTER_UNKNOWN;
+                if (wasOff) {
+                    // Priority only: calls and messages you allow in your own DND settings, alarms and media still come through
+                    nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_PRIORITY);
+                    sp.edit().putBoolean("dndOwned", true).apply();
+                }
+                r.put("ok", true);
+                r.put("on", true);
+                r.put("already", !wasOff && !sp.getBoolean("dndOwned", false));
+            } else {
+                // only undo what Lift Log did; if DND was already on before the workout, leave it alone
+                if (sp.getBoolean("dndOwned", false)) {
+                    nm.setInterruptionFilter(NotificationManager.INTERRUPTION_FILTER_ALL);
+                    sp.edit().putBoolean("dndOwned", false).apply();
+                }
+                else if (nm.getCurrentInterruptionFilter() != NotificationManager.INTERRUPTION_FILTER_ALL) r.put("kept", true);
+                r.put("ok", true);
+                r.put("on", false);
+            }
+            call.resolve(r);
+        } catch (Exception e) {
+            call.reject(String.valueOf(e.getMessage()));
+        }
+    }
+
+    @PluginMethod
+    public void dndSettings(PluginCall call) {
+        try {
+            Intent i = new Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+        } catch (Exception e) {
+            Intent i = new Intent(Settings.ACTION_SETTINGS);
+            i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(i);
+        }
+        call.resolve();
+    }
+
+    @Override
+    protected void handleOnResume() {
+        notifyListeners("resume", new JSObject());
+    }
+
     void handleNotifAction(String a) {
         JSObject o = new JSObject();
         o.put("action", a);
