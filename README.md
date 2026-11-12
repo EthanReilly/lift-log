@@ -43,7 +43,7 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 
 ### Organising
 - **First-launch setup**: choose units, rest time and a starting program, or import from Strong or Hevy
-- **Program templates:** Push Pull Legs, Upper / Lower, PPLUL (Push Pull Legs Upper Lower), PPLAL (Push Pull Legs Arms Legs), Full Body, Strength 5×5, PHUL, Bro Split and Beginner Full Body. Preview each day, then add a program as a folder of routines you can edit.
+- **Program templates:** Push Pull Legs, Upper / Lower, PPLUL (Push Pull Legs Upper Lower), PPLAL (Push Pull Legs Arnold Lower, with a chest and back superset day), Full Body, Strength 5×5, PHUL, Bro Split and Beginner Full Body. Preview each day, then add a program as a folder of routines you can edit.
 - **Routine folders**
 - About 70 built-in exercises plus your own, each with primary and secondary muscles
 

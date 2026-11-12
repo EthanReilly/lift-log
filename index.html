@@ -283,6 +283,7 @@ input[type=range]{width:100%;accent-color:var(--accent)}
 .tday{margin-bottom:12px}
 .tday h3{margin:0 0 6px;font-size:16px}
 .tex{display:grid;grid-template-columns:3.6rem 1fr;gap:4px 10px;font-size:14px}
+.tex .ssl{font-size:11px;font-weight:800;letter-spacing:.05em;color:var(--accent);margin-left:6px}
 .tex span:nth-child(odd){color:var(--muted);font-variant-numeric:tabular-nums}
 .tplbtn{display:flex;width:100%;align-items:center;gap:12px;text-align:left;margin-bottom:12px}
 .ex-h{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;touch-action:pan-y}
@@ -1190,7 +1191,7 @@ function routinesHtml(){
 }
 
 /* ---------- program templates ---------- */
-function T(ex,n,r){return {ex:ex,sets:starterSets(n,r)}}
+function T(ex,n,r,ss){var o={ex:ex,sets:starterSets(n,r)};if(ss)o.ss=ss;return o}
 var PROGRAMS=[
   {id:'ppl',name:'Push Pull Legs',days:'3 or 6 days a week',level:'Intermediate',goal:'Muscle',
    about:'Each muscle group gets its own day. Run it 3 days a week, or twice through for 6 days.',schedule:'Push · Pull · Legs · rest, then repeat',
@@ -1210,13 +1211,13 @@ var PROGRAMS=[
      {name:'Legs',ex:[T('squat',4,6),T('rdl',3,8),T('legpress',3,12),T('legcurl',3,12),T('calf',4,15)]},
      {name:'Upper',ex:[T('incbench',3,8),T('cablerow',3,10),T('dbohp',3,10),T('latpd',3,10),T('cablefly',3,12),T('reardelt',3,15),T('dbcurl',2,12),T('skull',2,12)]},
      {name:'Lower',ex:[T('hack',3,8),T('hipthrust',3,10),T('bulg',3,10),T('legext',3,12),T('legcurl',3,12),T('seatedcalf',4,15),T('hlr',3,12)]}]},
-  {id:'pplal',name:'PPLAL',days:'5 days a week',level:'Intermediate',goal:'Muscle',
-   about:'Push, Pull, Legs, Arms, Legs. A dedicated arms day plus two leg days: Legs A focuses on quads, Legs B on hamstrings and glutes.',schedule:'Push · Pull · Legs A · rest · Arms · Legs B · rest',
-   routines:[{name:'Push',ex:[T('bench',4,6),T('ohp',3,8),T('incdb',3,10),T('cablefly',3,12),T('latraise',4,15),T('pushdown',3,12)]},
-     {name:'Pull',ex:[T('deadlift',3,5),T('pullup',3,8),T('row',3,8),T('cablerow',3,10),T('facepull',3,15),T('shrug',3,12)]},
-     {name:'Legs A',ex:[T('squat',4,6),T('legpress',3,10),T('bulg',3,10),T('legext',3,12),T('legcurl',3,12),T('calf',4,15)]},
-     {name:'Arms',ex:[T('cgbench',3,8),T('bbcurl',3,10),T('skull',3,10),T('preacher',3,12),T('ohtri',3,12),T('hammer',3,12),T('reardelt',3,15)]},
-     {name:'Legs B',ex:[T('rdl',4,8),T('hipthrust',3,10),T('legcurl',3,12),T('lunge',3,12),T('seatedcalf',4,15),T('hlr',3,12)]}]},
+  {id:'pplal',name:'PPLAL',days:'5 days a week',level:'Intermediate',goal:'Muscle & strength',
+   about:'Push, Pull, Legs, Arnold, Lower. The Arnold day is Arnold Schwarzenegger’s classic chest and back session: each chest exercise is supersetted with a back exercise. Legs is quad-focused and Lower works hamstrings and glutes.',schedule:'Push · Pull · Legs · rest · Arnold · Lower · rest',
+   routines:[{name:'Push',ex:[T('bench',4,6),T('ohp',3,8),T('incdb',3,10),T('latraise',4,15),T('pushdown',3,12),T('ohtri',3,12)]},
+     {name:'Pull',ex:[T('deadlift',3,5),T('pullup',3,8),T('row',3,8),T('facepull',3,15),T('bbcurl',3,10),T('hammer',3,12)]},
+     {name:'Legs',ex:[T('squat',4,6),T('legpress',3,10),T('bulg',3,10),T('legext',3,12),T('legcurl',3,12),T('calf',4,15)]},
+     {name:'Arnold (Chest & Back)',ex:[T('incbench',4,8,'A'),T('pullup',4,8,'A'),T('dbbench',3,10,'B'),T('tbar',3,10,'B'),T('cablefly',3,12,'C'),T('cablerow',3,12,'C'),T('chestdip',3,10)]},
+     {name:'Lower',ex:[T('rdl',4,8),T('hipthrust',3,10),T('hack',3,10),T('legcurl',3,12),T('seatedcalf',4,15),T('hlr',3,12)]}]},
   {id:'fb3',name:'Full Body',days:'3 days a week',level:'Beginner to intermediate',goal:'Strength & muscle',
    about:'Every session trains the whole body, with a different main lift each day.',schedule:'Mon A · Wed B · Fri C',
    routines:[{name:'Full Body A',ex:[T('squat',3,8),T('bench',3,8),T('row',3,8),T('latraise',3,12),T('plank',3,45)]},
@@ -1259,7 +1260,7 @@ function templateView(o,z,i){
     '<div class="tags" style="margin-top:0"><span class="tag">'+esc(pg.days)+'</span><span class="tag">'+esc(pg.level)+'</span><span class="tag">'+esc(pg.goal)+'</span></div><p style="margin:6px 0">'+esc(pg.about)+'</p><p class="sub" style="margin:0 0 14px">Suggested week: '+esc(pg.schedule)+'</p>';
   pg.routines.forEach(function(r){
     var sets=r.ex.reduce(function(m,e){return m+e.sets.length},0);
-    h+='<div class="card tday"><div class="row"><h3 class="grow">'+esc(r.name)+'</h3><span class="sub">'+sets+' sets · about '+fmtShort(Math.max(60,planSecs(r.ex,hp,false)))+'</span></div><div class="tex">'+r.ex.map(function(e){return '<span>'+tplSetsText(e)+'</span><span>'+esc(exOf(e.ex).name)+'</span>'}).join('')+'</div></div>';
+    h+='<div class="card tday"><div class="row"><h3 class="grow">'+esc(r.name)+'</h3><span class="sub">'+sets+' sets · about '+fmtShort(Math.max(60,planSecs(r.ex,hp,false)))+'</span></div><div class="tex">'+r.ex.map(function(e){return '<span>'+tplSetsText(e)+'</span><span>'+esc(exOf(e.ex).name)+(e.ss?'<b class="ssl">SUPERSET '+esc(e.ss)+'</b>':'')+'</span>'}).join('')+'</div></div>';
   });
   h+='<button class="btn block" style="margin-top:4px" data-act="tpl-add" data-id="'+pg.id+'">'+I.plusS+' Add to my routines</button><p class="sub" style="margin:10px 2px 0">Weights start empty. Your first session fills them in, and after that the Previous column shows what you lifted.</p>';
   return h+'</div></section>';
