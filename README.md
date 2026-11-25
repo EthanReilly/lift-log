@@ -10,7 +10,7 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 ### Logging
 - Routines and empty workouts, with a set table showing what you did last time (tap it to copy)
 - Set types: warm-up, working, drop and failure. A new workout copies last session's layout, so last week's warm-ups come back as warm-ups, and the Previous column matches warm-up to warm-up and working set to working set.
-- **Auto warm-up detection** marks light sets before your working sets as W
+- **Auto warm-up detection** marks sets before your first working set as W when they're up to 85% of your working weight. Obvious warm-ups (60% or less of last time) are marked as soon as you tick them, a lighter deload day isn't mistaken for warm-ups, and back-off sets after your working sets stay as working sets. Tap W to change any set.
 - **Warm-up calculator** adds warm-up sets worked out from your working weight (Short, Standard or Long steps)
 - **Plate calculator** shows the plates for each side, for your bar and the plates your gym has
 - **Supersets** link exercises, and the rest timer starts after the last one in the group

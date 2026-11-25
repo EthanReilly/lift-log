@@ -579,19 +579,25 @@ function calcPRs(w){
 /* auto warm-up: leading sets well below the working weight become W */
 function autoWarm(ex){
   if(!S.profile.autoWarm||exOf(ex.ex).type!=='wr')return [];
-  var ref=0;
-  lastSets(ex.ex).forEach(function(s){if(isWork(s))ref=Math.max(ref,s.w||0)});
-  ex.sets.forEach(function(s){if(s.done&&!(s.tManual&&s.t==='w'))ref=Math.max(ref,s.w||0)});
-  if(!ref)return [];
+  /* hist: heaviest working set last time; top: heaviest set ticked today (manual warm-ups excluded) */
+  var hist=0,top=0,done=[];
+  lastSets(ex.ex).forEach(function(s){if(isWork(s))hist=Math.max(hist,s.w||0)});
+  ex.sets.forEach(function(s){if(s.done&&!(s.tManual&&s.t==='w')){done.push(s);top=Math.max(top,s.w||0)}});
+  var ref=Math.max(top,hist);if(!ref)return [];
+  /* once a set at working weight (over 85% of it) is ticked, lighter sets before it are warm-ups;
+     until then only clearly light sets (60% or less of last time) are marked, so a lighter day isn't all warm-ups */
+  var heavy=done.some(function(s){return (s.w||0)>0.85*ref});
+  var light=function(s){var w=s.w||0;if(heavy)return w<=0.85*ref;return hist>0&&w<=0.6*hist&&(done.length===1||w<top)};
   var changed=[];
   for(var i=0;i<ex.sets.length;i++){
     var s=ex.sets[i];
     if(s.tManual){if(s.t==='w')continue;break}
     if(!s.done)break;
-    var light=(s.w||0)<=0.6*ref;
-    if(light){if(s.t==='n'){s.t='w';s.tAuto=true;changed.push(i)}}
+    if(light(s)){if(s.t==='n'){s.t='w';s.tAuto=true;changed.push(i)}}
     else{if(s.tAuto&&s.t==='w'){s.t='n';delete s.tAuto}break}
   }
+  /* sets after the first working set that were marked automatically go back to working */
+  for(;i<ex.sets.length;i++){var r=ex.sets[i];if(r.tAuto&&r.t==='w'&&r.done&&!light(r)){r.t='n';delete r.tAuto}}
   return changed;
 }
 /* time estimate */
