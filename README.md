@@ -20,7 +20,9 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 - **Stopwatch for timed sets** such as planks or runs. Tap to start, tap to stop, and the time is filled in and the set logged. You can still type times by hand.
 - **Estimated finish time** from your own pace per set plus each exercise's rest time. Supersets rest once per round, and the estimate updates as you log sets.
 - Personal records for heaviest weight, estimated 1RM and set volume
-- **Built-in number pad** for weights, reps and times, with ±2.5 buttons, a plate calculator shortcut and **Log set** (can be turned off in Settings)
+- **Built-in number pad** for weights, reps and times, with **Log set** and a plate calculator shortcut (can be turned off in Settings). The set you're typing in is kept in the middle of the screen above the pad.
+- **Weight steps per exercise** for the pad's + and − keys: 2.5 kg for barbells and dumbbells and 5 kg for cables and machines by default, changeable from the pad or the exercise's ••• menu
+- **Update routine after a workout**: if you swapped, added or removed exercises or changed sets, finishing offers to save those changes to the routine for next time
 - **Replace exercise** opens a full list with the best matches first, search, muscle filters and a Create new exercise button. Your sets carry over.
 - **Edit your own exercises** (name, muscles, equipment, logging type) from the exercise page or the ••• menu in a workout
 - **Sticky notes** per exercise (seat height, grip) that show every time you do it
