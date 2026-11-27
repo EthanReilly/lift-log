@@ -49,7 +49,7 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 - **Routine folders**, each with a **New routine** button so you can start a blank routine straight inside a folder
 - **Hold and drag routines** to put them in your order, within a folder or among routines outside folders
 - **Edit and copy routines**: tap a routine's name to edit it, or use ••• → Make a copy to create another version (for example Push B). The copy opens straight away so you can rename and change it.
-- About 130 built-in exercises plus your own, each with primary and secondary muscles. These include the machine, cable and isolation work common in Jeff Nippard's programs (Pec Deck, Bayesian Curl, Pendulum Squat, Nordic Curl, Kelso Shrug and more)
+- About 130 built-in exercises plus your own, each with primary and secondary muscles. These include the machine, cable and isolation work common in Jeff Nippard's programs (Pec Deck, Bayesian Curl, Pendulum Squat, Nordic Curl, Kelso Shrug and more), plus a forearm section (wrist curls, reverse curls, farmer's carry, dead hangs, grip work). Forearms show on the muscle maps
 
 ### Android only
 - **Now playing banner** for any music app, with play, pause and skip. Tap the song to open the app it's playing from.

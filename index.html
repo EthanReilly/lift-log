@@ -435,8 +435,8 @@ var fMonth=function(t){return new Date(t).toLocaleDateString(undefined,{month:'l
 function greet(t){var h=new Date(t).getHours();return (h<5?'Night':h<12?'Morning':h<17?'Afternoon':h<21?'Evening':'Night')+' Workout'}
 
 /* ---------- exercise library ---------- */
-var MUSCLES=['Chest','Back','Shoulders','Biceps','Triceps','Quads','Hamstrings','Glutes','Calves','Core','Cardio','Full Body'];
-var DRAWN=['Chest','Back','Shoulders','Biceps','Triceps','Core','Quads','Hamstrings','Glutes','Calves'];
+var MUSCLES=['Chest','Back','Shoulders','Biceps','Triceps','Forearms','Quads','Hamstrings','Glutes','Calves','Core','Cardio','Full Body'];
+var DRAWN=['Chest','Back','Shoulders','Biceps','Triceps','Forearms','Core','Quads','Hamstrings','Glutes','Calves'];
 var EQUIP=['Barbell','Dumbbell','Machine','Smith Machine','Cable','Bodyweight','Kettlebell','Other'];
 var TYPES={wr:'Weight & reps',reps:'Reps only',dur:'Duration'};
 var LIB=[
@@ -448,7 +448,7 @@ var LIB=[
 ['chinup','Chin-up','Back','Bodyweight','reps','Biceps'],['tbar','T-Bar Row','Back','Barbell','wr','Biceps,Shoulders'],['shrug','Dumbbell Shrug','Back','Dumbbell','wr',''],
 ['ohp','Overhead Press','Shoulders','Barbell','wr','Triceps,Core'],['dbohp','Seated Dumbbell Shoulder Press','Shoulders','Dumbbell','wr','Triceps'],['latraise','Lateral Raise','Shoulders','Dumbbell','wr',''],
 ['reardelt','Rear Delt Fly','Shoulders','Dumbbell','wr','Back'],['facepull','Face Pull','Shoulders','Cable','wr','Back'],['arnold','Arnold Press','Shoulders','Dumbbell','wr','Triceps'],
-['bbcurl','Barbell Curl','Biceps','Barbell','wr',''],['dbcurl','Dumbbell Curl','Biceps','Dumbbell','wr',''],['hammer','Hammer Curl','Biceps','Dumbbell','wr',''],
+['bbcurl','Barbell Curl','Biceps','Barbell','wr',''],['dbcurl','Dumbbell Curl','Biceps','Dumbbell','wr',''],['hammer','Hammer Curl','Biceps','Dumbbell','wr','Forearms'],
 ['preacher','Preacher Curl','Biceps','Machine','wr',''],['cablecurl','Cable Curl','Biceps','Cable','wr',''],
 ['pushdown','Triceps Pushdown','Triceps','Cable','wr',''],['skull','Skullcrusher','Triceps','Barbell','wr',''],['ohtri','Overhead Triceps Extension','Triceps','Dumbbell','wr',''],
 ['cgbench','Close Grip Bench Press','Triceps','Barbell','wr','Chest,Shoulders'],['tridip','Triceps Dip','Triceps','Bodyweight','reps','Chest,Shoulders'],
@@ -518,7 +518,19 @@ var LIB=[
 ['lpcalf','Leg Press Calf Press','Calves','Machine','wr',''],
 ['declinecrunch','Decline Crunch','Core','Bodyweight','reps',''],
 ['pallof','Pallof Press','Core','Cable','wr',''],
-['deadbug','Dead Bug','Core','Bodyweight','reps','']
+['deadbug','Dead Bug','Core','Bodyweight','reps',''],
+['wristcurl','Dumbbell Wrist Curl','Forearms','Dumbbell','wr',''],
+['bbwristcurl','Barbell Wrist Curl','Forearms','Barbell','wr',''],
+['btbwrist','Behind-the-Back Wrist Curl','Forearms','Barbell','wr',''],
+['cablewrist','Cable Wrist Curl','Forearms','Cable','wr',''],
+['revwrist','Reverse Wrist Curl','Forearms','Dumbbell','wr',''],
+['revcurl','Reverse Curl','Forearms','Barbell','wr','Biceps'],
+['zottman','Zottman Curl','Biceps','Dumbbell','wr','Forearms'],
+['farmer','Farmer\'s Carry','Forearms','Dumbbell','wr','Back,Core'],
+['deadhang','Dead Hang','Forearms','Bodyweight','dur','Back'],
+['platepinch','Plate Pinch Hold','Forearms','Other','dur',''],
+['wristroller','Wrist Roller','Forearms','Other','reps',''],
+['gripper','Hand Gripper','Forearms','Other','reps','']
 ].map(function(a){return {id:a[0],name:a[1],muscle:a[2],equip:a[3],type:a[4]||'wr',sec:a[5]?a[5].split(','):[]}});
 var FULLP={kbswing:['Glutes','Hamstrings'],burpee:['Chest','Quads'],thruster:['Quads','Shoulders']};
 var LIBMAP={};LIB.forEach(function(e){LIBMAP[e.id]=e});
@@ -717,8 +729,9 @@ function muscleSets(ws,onlyDone){var c={};ws.forEach(function(w){w.exercises.for
 function weekStart(t){var d=new Date(t);d.setHours(0,0,0,0);var day=(d.getDay()+6)%7;d.setDate(d.getDate()-day);return d.getTime()}
 
 /* ---------- body map ---------- */
-var BODY_N='<circle cx="50" cy="15" r="10"/><rect x="45" y="23" width="10" height="9" rx="2"/><ellipse cx="22" cy="84" rx="4.5" ry="12"/><ellipse cx="78" cy="84" rx="4.5" ry="12"/><circle cx="21" cy="100" r="4"/><circle cx="79" cy="100" r="4"/><ellipse cx="41" cy="146" rx="5" ry="4"/><ellipse cx="59" cy="146" rx="5" ry="4"/><ellipse cx="41" cy="188" rx="3.4" ry="8"/><ellipse cx="59" cy="188" rx="3.4" ry="8"/><ellipse cx="40" cy="199" rx="6" ry="3.5"/><ellipse cx="60" cy="199" rx="6" ry="3.5"/>';
+var BODY_N='<circle cx="50" cy="15" r="10"/><rect x="45" y="23" width="10" height="9" rx="2"/><circle cx="21" cy="100" r="4"/><circle cx="79" cy="100" r="4"/><ellipse cx="41" cy="146" rx="5" ry="4"/><ellipse cx="59" cy="146" rx="5" ry="4"/><ellipse cx="41" cy="188" rx="3.4" ry="8"/><ellipse cx="59" cy="188" rx="3.4" ry="8"/><ellipse cx="40" cy="199" rx="6" ry="3.5"/><ellipse cx="60" cy="199" rx="6" ry="3.5"/>';
 var BODY_F={
+  Forearms:'<ellipse cx="22" cy="84" rx="4.5" ry="12"/><ellipse cx="78" cy="84" rx="4.5" ry="12"/>',
   Shoulders:'<ellipse cx="30" cy="40" rx="8" ry="7"/><ellipse cx="70" cy="40" rx="8" ry="7"/>',
   Chest:'<path d="M49 34C42 33 37 36 37 42C37 50 41 56 49 56Z"/><path d="M51 34C58 33 63 36 63 42C63 50 59 56 51 56Z"/>',
   Biceps:'<ellipse cx="26" cy="58" rx="5" ry="10"/><ellipse cx="74" cy="58" rx="5" ry="10"/>',
@@ -728,6 +741,7 @@ var BODY_F={
 };
 var BODY_FN='<path d="M38 96L62 96L60 108L50 112L40 108Z"/>';
 var BODY_B={
+  Forearms:'<ellipse cx="22" cy="84" rx="4.5" ry="12"/><ellipse cx="78" cy="84" rx="4.5" ry="12"/>',
   Back:'<path d="M41 31L50 27L59 31L57 40L50 45L43 40Z"/><path d="M38 43C36 53 39 64 46 72L49 72L49 48L42 42Z"/><path d="M62 43C64 53 61 64 54 72L51 72L51 48L58 42Z"/><rect x="44" y="74" width="12" height="20" rx="4"/>',
   Shoulders:'<ellipse cx="30" cy="40" rx="8" ry="7"/><ellipse cx="70" cy="40" rx="8" ry="7"/>',
   Triceps:'<ellipse cx="26" cy="58" rx="5" ry="10"/><ellipse cx="74" cy="58" rx="5" ry="10"/>',
