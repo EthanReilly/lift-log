@@ -159,6 +159,7 @@ button.pv:hover{background:var(--surface2)}
 .trophy{color:var(--warn)}
 .pr-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:800;color:var(--warn);background:var(--warn-soft);padding:2px 7px;border-radius:999px}
 .sech{margin:18px 4px 6px;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)}
+.rtap{cursor:pointer;border-radius:10px;-webkit-tap-highlight-color:transparent}.rtap:active{opacity:.6}
 .pick-row:active,.opt:active,.altr:active{background:var(--surface2)}
 .pick-row .pill{flex:none}
 .pick-row{display:flex;align-items:center;gap:12px;width:100%;text-align:left;padding:11px 10px;border-radius:12px}
@@ -437,9 +438,9 @@ var TYPES={wr:'Weight & reps',reps:'Reps only',dur:'Duration'};
 var LIB=[
 ['bench','Bench Press','Chest','Barbell','wr','Triceps,Shoulders'],['incbench','Incline Bench Press','Chest','Barbell','wr','Shoulders,Triceps'],['dbbench','Dumbbell Bench Press','Chest','Dumbbell','wr','Triceps,Shoulders'],
 ['incdb','Incline Dumbbell Press','Chest','Dumbbell','wr','Shoulders,Triceps'],['dbfly','Dumbbell Fly','Chest','Dumbbell','wr','Shoulders'],['cablefly','Cable Fly','Chest','Cable','wr','Shoulders'],
-['chestpress','Machine Chest Press','Chest','Machine','wr','Triceps,Shoulders'],['pushup','Push-up','Chest','Bodyweight','reps','Triceps,Shoulders,Core'],['chestdip','Chest Dip','Chest','Bodyweight','reps','Triceps,Shoulders'],
+['chestpress','Machine Chest Press','Chest','Machine','wr','Triceps,Shoulders'],['pushup','Push-up','Chest','Bodyweight','reps','Triceps,Shoulders,Core'],['chestdip','Chest Dip','Chest','Bodyweight','reps','Triceps,Shoulders'],['wchestdip','Weighted Chest Dip','Chest','Other','wr','Triceps,Shoulders'],
 ['deadlift','Deadlift','Back','Barbell','wr','Glutes,Hamstrings,Core'],['row','Barbell Row','Back','Barbell','wr','Biceps,Shoulders'],['dbrow','One-Arm Dumbbell Row','Back','Dumbbell','wr','Biceps,Shoulders'],
-['latpd','Lat Pulldown','Back','Cable','wr','Biceps'],['cablerow','Seated Cable Row','Back','Cable','wr','Biceps,Shoulders'],['pullup','Pull-up','Back','Bodyweight','reps','Biceps'],
+['latpd','Lat Pulldown','Back','Cable','wr','Biceps'],['latpull','Lat Pullover','Back','Cable','wr','Triceps'],['dbpull','Dumbbell Pullover','Back','Dumbbell','wr','Chest,Triceps'],['cablerow','Seated Cable Row','Back','Cable','wr','Biceps,Shoulders'],['pullup','Pull-up','Back','Bodyweight','reps','Biceps'],
 ['chinup','Chin-up','Back','Bodyweight','reps','Biceps'],['tbar','T-Bar Row','Back','Barbell','wr','Biceps,Shoulders'],['shrug','Dumbbell Shrug','Back','Dumbbell','wr',''],
 ['ohp','Overhead Press','Shoulders','Barbell','wr','Triceps,Core'],['dbohp','Seated Dumbbell Shoulder Press','Shoulders','Dumbbell','wr','Triceps'],['latraise','Lateral Raise','Shoulders','Dumbbell','wr',''],
 ['reardelt','Rear Delt Fly','Shoulders','Dumbbell','wr','Back'],['facepull','Face Pull','Shoulders','Cable','wr','Back'],['arnold','Arnold Press','Shoulders','Dumbbell','wr','Triceps'],
@@ -453,7 +454,7 @@ var LIB=[
 ['rdl','Romanian Deadlift','Hamstrings','Barbell','wr','Glutes,Back'],['legcurl','Leg Curl','Hamstrings','Machine','wr',''],['gm','Good Morning','Hamstrings','Barbell','wr','Glutes,Back'],
 ['hipthrust','Hip Thrust','Glutes','Barbell','wr','Hamstrings'],['bridge','Glute Bridge','Glutes','Bodyweight','reps','Hamstrings'],['kickback','Cable Kickback','Glutes','Cable','wr','Hamstrings'],
 ['calf','Standing Calf Raise','Calves','Machine','wr',''],['seatedcalf','Seated Calf Raise','Calves','Machine','wr',''],
-['plank','Plank','Core','Bodyweight','dur','Shoulders'],['crunch','Crunch','Core','Bodyweight','reps',''],['hlr','Hanging Leg Raise','Core','Bodyweight','reps',''],
+['plank','Plank','Core','Bodyweight','dur','Shoulders'],['crunch','Crunch','Core','Bodyweight','reps',''],['hlr','Hanging Leg Raise','Core','Bodyweight','reps',''],['legraise','Lying Leg Raise','Core','Bodyweight','reps',''],['hkr','Hanging Knee Raise','Core','Bodyweight','reps',''],['ccraise','Captain\'s Chair Leg Raise','Core','Bodyweight','reps',''],
 ['cablecrunch','Cable Crunch','Core','Cable','wr',''],['twist','Russian Twist','Core','Bodyweight','reps',''],['abwheel','Ab Wheel Rollout','Core','Other','reps','Shoulders'],
 ['run','Running','Cardio','Other','dur',''],['cycle','Cycling','Cardio','Machine','dur',''],['rower','Rowing Machine','Cardio','Machine','dur',''],
 ['walk','Walking','Cardio','Other','dur',''],['elliptical','Elliptical','Cardio','Machine','dur',''],['rope','Jump Rope','Cardio','Other','dur',''],['stairs','Stair Climber','Cardio','Machine','dur',''],
@@ -1022,7 +1023,7 @@ function ovView(o,i){
     case 'move':{var cur=(S.profile.routines.filter(function(r){return r.id===o.id})[0]||{}).folder||'';
       return '<div class="scrim" data-act="scrim"><div class="panel" role="dialog" aria-modal="true">'+folderList().map(function(f){return '<button class="opt" data-act="move-to" data-id="'+f.id+'"'+(cur===f.id?' aria-current="true"':'')+'>'+I.folder+' '+esc(f.name)+'</button>'}).join('')+
         '<button class="opt" data-act="move-to" data-id=""'+(!cur?' aria-current="true"':'')+'>'+I.x+' No folder</button><button class="opt" data-act="folder-new" data-move="'+o.id+'">'+I.plus+' New folder…</button></div></div>'}
-    case 'rmenu':return '<div class="scrim" data-act="scrim"><div class="panel" role="dialog" aria-modal="true"><button class="opt" data-act="routine-edit" data-id="'+o.id+'">'+I.edit+' Edit routine</button><button class="opt" data-act="routine-dup" data-id="'+o.id+'">'+I.copy+' Duplicate</button><button class="opt" data-act="routine-move" data-id="'+o.id+'">'+I.folder+' Move to folder</button><button class="opt dng" data-act="routine-del" data-id="'+o.id+'">'+I.trash+' Delete routine</button></div></div>';
+    case 'rmenu':return '<div class="scrim" data-act="scrim"><div class="panel" role="dialog" aria-modal="true"><button class="opt" data-act="routine-edit" data-id="'+o.id+'">'+I.edit+' Edit routine</button><button class="opt" data-act="routine-dup" data-id="'+o.id+'">'+I.copy+' Make a copy</button><button class="opt" data-act="routine-move" data-id="'+o.id+'">'+I.folder+' Move to folder</button><button class="opt dng" data-act="routine-del" data-id="'+o.id+'">'+I.trash+' Delete routine</button></div></div>';
   }
   return '';
 }
@@ -1184,11 +1185,11 @@ function folderList(){return S.profile.folders||[]}
 function routineCard(r,hp){
   var sets=r.exercises.reduce(function(n,e){return n+e.sets.length},0);
   var names=r.exercises.slice(0,4).map(function(e){return exOf(e.ex).name}).join(', ')+(r.exercises.length>4?'…':'');
-  return '<div class="card rt"><div class="row"><h3 class="grow ell">'+esc(r.name)+'</h3><button class="ib" data-act="routine-menu" data-id="'+r.id+'" aria-label="Routine options">'+I.more+'</button></div><div class="meta">'+r.exercises.length+' exercises · '+sets+' sets · about '+fmtShort(Math.max(60,planSecs(r.exercises,hp,false)))+'</div><div class="names ell" style="margin:0 0 12px">'+esc(names)+'</div><button class="btn sec block" data-act="start-routine" data-id="'+r.id+'">Start routine</button></div>';
+  return '<div class="card rt"><div class="row"><h3 class="grow ell rtap" data-act="routine-edit" data-id="'+r.id+'" role="button" tabindex="0" aria-label="Edit '+esc(r.name)+'">'+esc(r.name)+'</h3><button class="ib" data-act="routine-menu" data-id="'+r.id+'" aria-label="Routine options">'+I.more+'</button></div><div class="meta">'+r.exercises.length+' exercises · '+sets+' sets · about '+fmtShort(Math.max(60,planSecs(r.exercises,hp,false)))+'</div><div class="names ell" style="margin:0 0 12px">'+esc(names)+'</div><button class="btn sec block" data-act="start-routine" data-id="'+r.id+'">Start routine</button></div>';
 }
 function routineRow(r,hp){
   var sets=r.exercises.reduce(function(n,e){return n+e.sets.length},0);
-  return '<div class="fr"><div class="grow" style="min-width:0"><b class="ell" style="display:block">'+esc(r.name)+'</b><span class="sub">'+r.exercises.length+' exercises · about '+fmtShort(Math.max(60,planSecs(r.exercises,hp,false)))+'</span></div><button class="ib" data-act="routine-menu" data-id="'+r.id+'" aria-label="Routine options">'+I.more+'</button><button class="btn sm sec" data-act="start-routine" data-id="'+r.id+'">Start</button></div>';
+  return '<div class="fr"><div class="grow rtap" style="min-width:0" data-act="routine-edit" data-id="'+r.id+'" role="button" tabindex="0" aria-label="Edit '+esc(r.name)+'"><b class="ell" style="display:block">'+esc(r.name)+'</b><span class="sub">'+r.exercises.length+' exercises · about '+fmtShort(Math.max(60,planSecs(r.exercises,hp,false)))+'</span></div><button class="ib" data-act="routine-menu" data-id="'+r.id+'" aria-label="Routine options">'+I.more+'</button><button class="btn sm sec" data-act="start-routine" data-id="'+r.id+'">Start</button></div>';
 }
 function routinesHtml(){
   var hp=workPace(),fs=folderList(),h='';
@@ -1731,7 +1732,13 @@ function act(a,d,t,e){
     case 'routine-menu':pushOv({t:'rmenu',id:d.id});break;
     case 'routine-edit':{var r=S.profile.routines.filter(function(x){return x.id===d.id})[0];if(!r)break;if(S.active){S.ov=[];toast('Finish or discard your current workout first');render();break}
       S.ov=[];S.active={kind:'routine',rid:r.id,name:r.name,exercises:r.exercises.map(function(e){return {id:uid(),ex:e.ex,ss:e.ss,note:'',sets:e.sets.map(function(s){return {t:s.t||'n',w:s.w==null?null:s.w,r:s.r==null?null:s.r}})}})};S.sheetOpen=true;render();break}
-    case 'routine-dup':{var r2=S.profile.routines.filter(function(x){return x.id===d.id})[0];if(!r2)break;var c=clean(r2);c.id='r_'+uid();c.name+=' copy';S.profile.routines.push(c);saveProfile();S.ov=[];render();toast('Routine duplicated');break}
+    case 'routine-dup':{var ri=S.profile.routines.findIndex(function(x){return x.id===d.id}),r2=S.profile.routines[ri];if(!r2)break;
+      var c=clean(r2);c.id='r_'+uid();if(r2.folder)c.folder=r2.folder;
+      var base=r2.name.replace(/ \(copy( \d+)?\)$/,''),nm=base+' (copy)',k=2;while(S.profile.routines.some(function(x){return x.name===nm}))nm=base+' (copy '+(k++)+')';c.name=nm;
+      S.profile.routines.splice(ri+1,0,c);saveProfile();S.ov=[];
+      if(S.active){render();toast('Copy made: '+nm);break}
+      act('routine-edit',{id:c.id});toast('Copy made. Rename it and change what you like.');
+      setTimeout(function(){var f=$('#aname');if(f){f.focus();try{f.select()}catch(e){}}},80);break}
     case 'routine-del':S.ov=[{t:'confirm',title:'Delete routine?',body:'This removes the routine. Logged workouts are not affected.',ok:'Delete',danger:true,go:'del-routine',id:d.id}];render();break;
     case 'del-routine-ask':if(A&&A.rid)pushOv({t:'confirm',title:'Delete routine?',body:'This removes the routine. Logged workouts are not affected.',ok:'Delete',danger:true,go:'del-routine',id:A.rid});break;
     case 'cancel-routine':S.active=null;S.sheetOpen=false;render();break;
