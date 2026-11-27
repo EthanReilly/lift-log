@@ -46,7 +46,8 @@ A workout tracker for Android and the web. It works fully offline, needs no acco
 ### Organising
 - **First-launch setup**: choose units, rest time and a starting program, or import from Strong or Hevy
 - **Program templates:** Push Pull Legs, Upper / Lower, PPLUL (Push Pull Legs Upper Lower), PPLAL (Push Pull Legs Arnold Lower, with a chest and back superset day), Full Body, Strength 5×5, PHUL, Bro Split and Beginner Full Body. Preview each day, then add a program as a folder of routines you can edit.
-- **Routine folders**
+- **Routine folders**, each with a **New routine** button so you can start a blank routine straight inside a folder
+- **Hold and drag routines** to put them in your order, within a folder or among routines outside folders
 - **Edit and copy routines**: tap a routine's name to edit it, or use ••• → Make a copy to create another version (for example Push B). The copy opens straight away so you can rename and change it.
 - About 130 built-in exercises plus your own, each with primary and secondary muscles. These include the machine, cable and isolation work common in Jeff Nippard's programs (Pec Deck, Bayesian Curl, Pendulum Squat, Nordic Curl, Kelso Shrug and more)
 
