@@ -433,7 +433,7 @@ function greet(t){var h=new Date(t).getHours();return (h<5?'Night':h<12?'Morning
 /* ---------- exercise library ---------- */
 var MUSCLES=['Chest','Back','Shoulders','Biceps','Triceps','Quads','Hamstrings','Glutes','Calves','Core','Cardio','Full Body'];
 var DRAWN=['Chest','Back','Shoulders','Biceps','Triceps','Core','Quads','Hamstrings','Glutes','Calves'];
-var EQUIP=['Barbell','Dumbbell','Machine','Cable','Bodyweight','Kettlebell','Other'];
+var EQUIP=['Barbell','Dumbbell','Machine','Smith Machine','Cable','Bodyweight','Kettlebell','Other'];
 var TYPES={wr:'Weight & reps',reps:'Reps only',dur:'Duration'};
 var LIB=[
 ['bench','Bench Press','Chest','Barbell','wr','Triceps,Shoulders'],['incbench','Incline Bench Press','Chest','Barbell','wr','Shoulders,Triceps'],['dbbench','Dumbbell Bench Press','Chest','Dumbbell','wr','Triceps,Shoulders'],
@@ -458,7 +458,63 @@ var LIB=[
 ['cablecrunch','Cable Crunch','Core','Cable','wr',''],['twist','Russian Twist','Core','Bodyweight','reps',''],['abwheel','Ab Wheel Rollout','Core','Other','reps','Shoulders'],
 ['run','Running','Cardio','Other','dur',''],['cycle','Cycling','Cardio','Machine','dur',''],['rower','Rowing Machine','Cardio','Machine','dur',''],
 ['walk','Walking','Cardio','Other','dur',''],['elliptical','Elliptical','Cardio','Machine','dur',''],['rope','Jump Rope','Cardio','Other','dur',''],['stairs','Stair Climber','Cardio','Machine','dur',''],
-['kbswing','Kettlebell Swing','Full Body','Kettlebell','wr','Back,Core,Shoulders'],['burpee','Burpee','Full Body','Bodyweight','reps','Shoulders,Core,Triceps'],['thruster','Thruster','Full Body','Barbell','wr','Glutes,Triceps,Core']
+['kbswing','Kettlebell Swing','Full Body','Kettlebell','wr','Back,Core,Shoulders'],['burpee','Burpee','Full Body','Bodyweight','reps','Shoulders,Core,Triceps'],['thruster','Thruster','Full Body','Barbell','wr','Glutes,Triceps,Core'],
+['pecdeck','Pec Deck','Chest','Machine','wr','Shoulders'],
+['lowhighfly','Low-to-High Cable Fly','Chest','Cable','wr','Shoulders'],
+['incmachpress','Incline Machine Press','Chest','Machine','wr','Shoulders,Triceps'],
+['smithinc','Smith Machine Incline Press','Chest','Smith Machine','wr','Shoulders,Triceps'],
+['pausebench','Paused Bench Press','Chest','Barbell','wr','Triceps,Shoulders'],
+['larsen','Larsen Press','Chest','Barbell','wr','Triceps,Shoulders'],
+['deficitpu','Deficit Push-up','Chest','Bodyweight','reps','Triceps,Shoulders,Core'],
+['wpullup','Weighted Pull-up','Back','Other','wr','Biceps'],
+['ngpulldown','Neutral-Grip Lat Pulldown','Back','Cable','wr','Biceps'],
+['sapulldown','Single-Arm Lat Pulldown','Back','Cable','wr','Biceps'],
+['cstbar','Chest-Supported T-Bar Row','Back','Machine','wr','Biceps,Shoulders'],
+['csdbrow','Chest-Supported Dumbbell Row','Back','Dumbbell','wr','Biceps,Shoulders'],
+['pendlay','Pendlay Row','Back','Barbell','wr','Biceps,Shoulders'],
+['sealrow','Seal Row','Back','Barbell','wr','Biceps,Shoulders'],
+['machrow','Machine Row','Back','Machine','wr','Biceps,Shoulders'],
+['meadows','Meadows Row','Back','Barbell','wr','Biceps,Shoulders'],
+['sacablerow','Single-Arm Cable Row','Back','Cable','wr','Biceps'],
+['kelso','Kelso Shrug','Back','Dumbbell','wr','Shoulders'],
+['bbshrug','Barbell Shrug','Back','Barbell','wr',''],
+['hyper','45° Hyperextension','Hamstrings','Other','wr','Glutes,Back'],
+['machlat','Machine Lateral Raise','Shoulders','Machine','wr',''],
+['cablelat','Cable Lateral Raise','Shoulders','Cable','wr',''],
+['leanlat','Lean-In Lateral Raise','Shoulders','Dumbbell','wr',''],
+['yraise','Cable Y-Raise','Shoulders','Cable','wr','Back'],
+['revpec','Reverse Pec Deck','Shoulders','Machine','wr','Back'],
+['machsp','Machine Shoulder Press','Shoulders','Machine','wr','Triceps'],
+['cableuprow','Cable Upright Row','Shoulders','Cable','wr','Back,Biceps'],
+['bayesian','Bayesian Cable Curl','Biceps','Cable','wr',''],
+['inccurl','Incline Dumbbell Curl','Biceps','Dumbbell','wr',''],
+['spider','Spider Curl','Biceps','Dumbbell','wr',''],
+['ezcurl','EZ-Bar Curl','Biceps','Barbell','wr',''],
+['machcurl','Machine Preacher Curl','Biceps','Machine','wr',''],
+['ohcable','Overhead Cable Triceps Extension','Triceps','Cable','wr',''],
+['cablekick','Cable Triceps Kickback','Triceps','Cable','wr',''],
+['katana','Katana Triceps Extension','Triceps','Cable','wr',''],
+['jmpress','JM Press','Triceps','Barbell','wr','Chest'],
+['pendsquat','Pendulum Squat','Quads','Machine','wr','Glutes'],
+['smithsquat','Smith Machine Squat','Quads','Smith Machine','wr','Glutes'],
+['pausesquat','Paused Squat','Quads','Barbell','wr','Glutes,Core'],
+['sissy','Sissy Squat','Quads','Bodyweight','reps',''],
+['revlunge','Reverse Lunge','Quads','Dumbbell','wr','Glutes,Hamstrings'],
+['stepup','Dumbbell Step-up','Quads','Dumbbell','wr','Glutes'],
+['hipadd','Hip Adduction Machine','Quads','Machine','wr','Glutes'],
+['seatedlc','Seated Leg Curl','Hamstrings','Machine','wr',''],
+['lyinglc','Lying Leg Curl','Hamstrings','Machine','wr',''],
+['nordic','Nordic Ham Curl','Hamstrings','Bodyweight','reps',''],
+['ghr','Glute-Ham Raise','Hamstrings','Bodyweight','reps','Glutes'],
+['sldl','Stiff-Leg Deadlift','Hamstrings','Barbell','wr','Glutes,Back'],
+['dbrdl','Dumbbell Romanian Deadlift','Hamstrings','Dumbbell','wr','Glutes,Back'],
+['hipabd','Hip Abduction Machine','Glutes','Machine','wr',''],
+['machhipthrust','Machine Hip Thrust','Glutes','Machine','wr','Hamstrings'],
+['trapdl','Trap Bar Deadlift','Glutes','Barbell','wr','Quads,Hamstrings,Back'],
+['lpcalf','Leg Press Calf Press','Calves','Machine','wr',''],
+['declinecrunch','Decline Crunch','Core','Bodyweight','reps',''],
+['pallof','Pallof Press','Core','Cable','wr',''],
+['deadbug','Dead Bug','Core','Bodyweight','reps','']
 ].map(function(a){return {id:a[0],name:a[1],muscle:a[2],equip:a[3],type:a[4]||'wr',sec:a[5]?a[5].split(','):[]}});
 var FULLP={kbswing:['Glutes','Hamstrings'],burpee:['Chest','Quads'],thruster:['Quads','Shoulders']};
 var LIBMAP={};LIB.forEach(function(e){LIBMAP[e.id]=e});
